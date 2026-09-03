@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FarmX Counter</title>
+<meta name="theme-color" content="#1976D2">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<style>
+:root{--xanh:#1976D2;--xanh-nhat:#E3F2FD;--nen:#FFFFFF;--chu:#1B2A38;--phu:#607D8B;--ok:#1E7F4F;--canh:#B7791F;--loi:#B3261E;--tram:#FFFFFF}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--nen);color:var(--chu);font:17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+header{background:#fff;color:var(--xanh);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--xanh-nhat)}
+header b{font-size:20px;letter-spacing:.2px}
+header small{color:var(--phu);font-size:13px}
+main{padding:16px;max-width:560px;margin:0 auto;padding-bottom:180px}
+.man{display:none}.man.hien{display:block}
+h1{font-size:26px;line-height:1.2;margin:8px 0 14px}
+p.phu{color:var(--phu);font-size:15px}
+.nut{display:block;width:100%;border:0;border-radius:14px;padding:20px;font:inherit;font-size:20px;font-weight:700;color:#fff;background:var(--xanh);margin-top:14px;cursor:pointer}
+.nut:active{transform:scale(.98)}
+.nut.xam{background:#CBD5DD;color:#6B7A86}
+.nut.phu2{background:#fff;color:var(--xanh);border:2px solid var(--xanh)}
+.nut.ok{background:var(--ok)}
+.chon{display:flex;gap:8px;margin:10px 0}
+.chon button{flex:1;padding:14px 6px;border-radius:12px;border:2px solid #BBDEFB;background:#fff;font:inherit;font-size:16px;font-weight:600;color:var(--phu)}
+.chon button.dang{border-color:var(--xanh);background:var(--xanh-nhat);color:var(--xanh)}
+.khung{position:relative;background:#000;border-radius:16px;overflow:hidden;aspect-ratio:4/3}
+video,canvas.xem{width:100%;height:100%;object-fit:cover;display:block}
+.khung .lop{position:absolute;inset:0;pointer-events:none;border:3px dashed rgba(255,255,255,.55);border-radius:16px;margin:8%}
+.trang-thai{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.the{padding:6px 12px;border-radius:999px;font-size:14px;font-weight:600;background:#E3E8EC;color:var(--phu)}
+.the.ok{background:#DDF3E6;color:var(--ok)}.the.canh{background:#FBEED6;color:var(--canh)}.the.loi{background:#F9DEDC;color:var(--loi)}
+.so-to{font-size:76px;font-weight:800;line-height:1;color:var(--xanh);margin:14px 0 4px;letter-spacing:-1px}
+.so-to small{font-size:22px;font-weight:600;color:var(--phu);margin-left:6px}
+.hang{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #E3F2FD;font-size:16px}
+.hang b{font-weight:700}
+input,textarea{width:100%;padding:14px;border:2px solid #CBD5DD;border-radius:12px;font:inherit;font-size:17px;background:#fff;margin-top:8px}
+.hanh-dong{display:none;position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));background:#fff;border-top:2px solid var(--xanh-nhat);padding:8px 12px;gap:10px;z-index:5}
+.hanh-dong.hien{display:flex}
+.hanh-dong .nut{margin:0;flex:1;padding:16px 8px;font-size:18px}
+.thanh{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid var(--xanh-nhat);display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+.thanh button{flex:1;border:0;background:none;font:inherit;font-size:13px;font-weight:600;color:var(--phu);padding:8px 4px}
+.thanh button.dang{color:var(--xanh)}
+.thanh button span{display:block;font-size:22px;margin-bottom:2px}
+.ds .muc{background:var(--xanh-nhat);border-radius:14px;padding:14px;margin-bottom:10px;border:1px solid #BBDEFB}
+.ds .muc b{font-size:20px;color:var(--xanh)}
+.ds .muc small{color:var(--phu);display:block;margin-top:4px}
+.trong{text-align:center;color:var(--phu);padding:40px 10px}
+.thong-bao{position:fixed;top:70px;left:16px;right:16px;background:var(--chu);color:#fff;padding:14px 16px;border-radius:12px;font-size:15px;display:none;z-index:9}
+img.kq{width:100%;border-radius:14px;display:block}
+.tien-do{height:6px;background:#E3F2FD;border-radius:3px;overflow:hidden;margin-top:10px}
+.tien-do i{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
+</style>
+</head>
+<body>
+<header><b>FarmX Counter</b><small id="tt-model">chưa có model</small></header>
+<div class="thong-bao" id="tb"></div>
+<main>
+
+<section class="man hien" id="man-dem">
+  <h1>Đếm con giống</h1>
+  <p class="phu">Đóng cửa hông, đặt điện thoại lên nắp, camera ngay lỗ.</p>
+  <div class="chon" id="loai">
+    <button data-v="pl" class="dang">Tôm PL</button>
+    <button data-v="tom_uong">Tôm ương</button>
+    <button data-v="ca_giong">Cá giống</button>
+  </div>
+  <div class="khung"><video id="cam" playsinline muted autoplay></video><div class="lop"></div></div>
+  <div class="trang-thai" id="kiem">
+    <span class="the" id="k-cam">Camera</span>
+    <span class="the" id="k-sang">Ánh sáng</span>
+    <span class="the" id="k-ma">Mã ArUco</span>
+    <span class="the" id="k-ngang">Nằm ngang</span>
+  </div>
+  <button class="nut" id="bat-cam">Bật camera</button>
+  <div class="tien-do"><i id="td"></i></div>
+</section>
+<div class="hanh-dong" id="hanh-dong">
+  <button class="nut" id="chup-1">Chụp 1 tấm</button>
+  <button class="nut ok" id="chup">Quay 5 giây</button>
+</div>
+
+<section class="man" id="man-kq">
+  <h1>Kết quả khay</h1>
+  <div class="so-to"><span id="so-con">0</span><small>con</small></div>
+  <div class="trang-thai" id="kq-the"></div>
+  <img class="kq" id="anh-kq" alt="">
+  <p class="phu" style="margin-top:8px">Số này là trung vị của 3–5 khung hình. Chạm vào ảnh để sửa tay (v1.1).</p>
+  <button class="nut ok" id="them-khay">Thêm vào lô, đếm khay tiếp</button>
+  <button class="nut phu2" id="chup-lai">Chụp lại khay này</button>
+</section>
+
+<section class="man" id="man-lo">
+  <h1>Lô đang đếm</h1>
+  <div class="so-to"><span id="lo-tong">0</span><small>con</small></div>
+  <div class="hang"><span>Số khay</span><b id="lo-khay">0</b></div>
+  <div class="hang"><span>Loại con</span><b id="lo-loai">—</b></div>
+  <div class="hang"><span>Từng khay</span><b id="lo-tung">—</b></div>
+  <input id="lo-khach" placeholder="Tên khách (không bắt buộc)">
+  <textarea id="lo-ghi" rows="2" placeholder="Ghi chú"></textarea>
+  <button class="nut" id="lo-them">Đếm khay tiếp</button>
+  <button class="nut ok" id="lo-xong">Xong lô, tạo báo cáo</button>
+  <button class="nut phu2" id="lo-huy">Hủy lô</button>
+</section>
+
+<section class="man" id="man-ls">
+  <h1>Lịch sử</h1>
+  <div class="ds" id="ls"></div>
+</section>
+
+<section class="man" id="man-cd">
+  <h1>Cài đặt</h1>
+  <div class="hang"><span>Phiên bản app</span><b>0.1 (khung)</b></div>
+  <div class="hang"><span>Model đếm</span><b id="cd-model">chưa tải</b></div>
+  <div class="hang"><span>Góp ảnh để cải thiện model</span><b><input type="checkbox" id="cd-gop" style="width:24px;height:24px"></b></div>
+  <p class="phu" style="margin-top:10px">Ảnh khay gửi ngầm khi có WiFi, không kèm tên khách, không kèm vị trí.</p>
+  <button class="nut phu2" id="cd-model-tai">Kiểm tra model mới</button>
+  <button class="nut phu2" id="cd-xoa">Xóa toàn bộ dữ liệu trên máy</button>
+</section>
+
+</main>
+<nav class="thanh">
+  <button data-m="man-dem" class="dang"><span>▣</span>Đếm</button>
+  <button data-m="man-lo"><span>≡</span>Lô</button>
+  <button data-m="man-ls"><span>◷</span>Lịch sử</button>
+  <button data-m="man-cd"><span>⚙</span>Cài đặt</button>
+</nav>
+<script src="app.js" type="module"></script>
+</body>
+</html>
