@@ -9,15 +9,21 @@ const MODEL_URL = SUPABASE_URL + "/storage/v1/object/public/counter-model/dem_v1
 // ---- thong so khay (mm) — hieu chuan tu anh khay that cua Hai Dang (IMG_4370, 05/09/2026) ----
 // Goc toa do = tam ma ID0 dich (25,25). Vi tri 6 ma do tu anh, ma canh 25 mm (in A4).
 const PX_MM = 2;
+let MA_MM = +(localStorage.maMM || 25);   // canh mot ma ArUco (mm)
+// Cau truc hieu chuan DUY NHAT (dung chung cho mac dinh, localStorage va hieuChuan()):
+//   { tam:{id:[x_mm,y_mm]}, long:[dai,rong], go, maMM, ngay, soMa }
+//   tam  = tam cac ma trong he toa do khay (mm)
+//   long = kich thuoc vung long khay de dem (mm); go = le bao quanh vung long (mm)
+//   anh nan ra co kich thuoc (long[0]+2*go) x (long[1]+2*go) mm
 const HC_MAC_DINH = {
-  ma: { 0:[25,25], 1:[495,25], 2:[24.4,312], 3:[507,306], 4:[269.3,20.1], 5:[271.2,311.3] },
-  long: [45, 45, 440, 240]   // vung lam long khay de dem: x, y, rong, cao (mm) — nam giua cac ma
+  tam: { 0:[25,25], 1:[495,25], 2:[24.4,312], 3:[507,306], 4:[269.3,20.1], 5:[271.2,311.3] },
+  long: [440, 240], go: 45, maMM: 25, ngay: null, soMa: 6
 };
 let HC = HC_MAC_DINH;
-try { if (localStorage.hieuChuan) HC = JSON.parse(localStorage.hieuChuan); } catch(e){}
-const TAM_MA = HC.ma;
-const W_OUT = Math.round((Math.max(...Object.values(TAM_MA).map(p=>p[0]))+25)*PX_MM);
-const H_OUT = Math.round((Math.max(...Object.values(TAM_MA).map(p=>p[1]))+25)*PX_MM);
+try { const h = JSON.parse(localStorage.hieuChuan || "null"); if (h && h.tam && h.long && h.go != null) HC = h; } catch(e){}
+let TAM_MA = HC.tam, LONG = HC.long, GO = HC.go;
+let W_OUT = Math.round((LONG[0] + 2*GO) * PX_MM);
+let H_OUT = Math.round((LONG[1] + 2*GO) * PX_MM);
 
 const $ = s => document.querySelector(s);
 const tb = (m, ms=2500) => { const e=$("#tb"); e.textContent=m; e.style.display="block"; clearTimeout(tb.t); tb.t=setTimeout(()=>e.style.display="none", ms); };
@@ -26,7 +32,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = "pl", stream = null, cv = null, ort = null, session = null, modelVer = null;
 let nghieng = false, loHienTai = null, khayVua = null;
-const PHIEN_BAN = "0.4";
+const PHIEN_BAN = "0.5";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -101,7 +107,7 @@ function nanKhay(canvas){
   let M; if(ids.length===3){ M=cv.getAffineTransform(sM,dM); cv.warpAffine(img,out,M,new cv.Size(W_OUT,H_OUT)); }
   else { M=cv.findHomography(sM,dM,cv.RANSAC,5); cv.warpPerspective(img,out,M,new cv.Size(W_OUT,H_OUT)); }
   // cat long khay
-  const r=new cv.Rect(HC.long[0]*PX_MM,HC.long[1]*PX_MM,HC.long[2]*PX_MM,HC.long[3]*PX_MM); const long=out.roi(r);
+  const r=new cv.Rect(Math.round(GO*PX_MM),Math.round(GO*PX_MM),Math.round(LONG[0]*PX_MM),Math.round(LONG[1]*PX_MM)); const long=out.roi(r);
   const c=document.createElement("canvas"); c.width=long.cols; c.height=long.rows; cv.imshow(c,long);
   [sM,dM,img,out,M,long].forEach(x=>x.delete&&x.delete()); return {canvas:c, soMa:tam.size};
 }
@@ -222,7 +228,9 @@ function hieuChuan(canvas){
   for(const id in mm){ mm[id]=[mm[id][0]+ox, mm[id][1]+oy]; }
   const long=[Math.round(maxX+ox+ox-go), Math.round(maxY+oy+oy-go)];
   const hc={tam:mm,long,go,maMM:MA_MM,ngay:new Date().toISOString(),soMa:ids.length};
-  localStorage.hieuChuan=JSON.stringify(hc); TAM_MA=mm; LONG=long; GO=go; W_OUT=(LONG[0]+2*GO)*PX_MM; H_OUT=(LONG[1]+2*GO)*PX_MM;
+  localStorage.hieuChuan=JSON.stringify(hc);
+  HC=hc; TAM_MA=hc.tam; LONG=hc.long; GO=hc.go;
+  W_OUT=Math.round((LONG[0]+2*GO)*PX_MM); H_OUT=Math.round((LONG[1]+2*GO)*PX_MM);
   return hc;
 }
 $("#cd-hieu-chuan").onclick=()=>{ if(!stream){ tb("Vào màn Đếm, bật camera, đặt khay trống rồi bấm lại."); return; }
