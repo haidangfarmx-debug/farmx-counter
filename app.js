@@ -1,5 +1,5 @@
 // FarmX Counter Tray — web-app v0.1 (khung)
-// Camera -> quay 5 s -> lay 5 khung -> ArUco nan khay (OpenCV.js) -> YOLO ONNX (onnxruntime-web) -> trung vi
+// Camera -> quay 5 s -> lay 5 khung -> ArUco nan khay (js-aruco2, thuan JS) -> YOLO ONNX (onnxruntime-web) -> trung vi
 // Lo luu IndexedDB, dong bo Supabase khi co mang.
 
 const SUPABASE_URL = "https://xofhpbfiuolkcbwbxume.supabase.co";
@@ -22,17 +22,15 @@ const HC_MAC_DINH = {
 let HC = HC_MAC_DINH;
 try { const h = JSON.parse(localStorage.hieuChuan || "null"); if (h && h.tam && h.long && h.go != null) HC = h; } catch(e){}
 let TAM_MA = HC.tam, LONG = HC.long, GO = HC.go;
-let W_OUT = Math.round((LONG[0] + 2*GO) * PX_MM);
-let H_OUT = Math.round((LONG[1] + 2*GO) * PX_MM);
 
 const $ = s => document.querySelector(s);
 const tb = (m, ms=2500) => { const e=$("#tb"); e.textContent=m; e.style.display="block"; clearTimeout(tb.t); tb.t=setTimeout(()=>e.style.display="none", ms); };
 const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="the "+(cls||""); };
 
 // ---- trang thai ----
-let loaiCon = "pl", stream = null, cv = null, ort = null, session = null, modelVer = null;
+let loaiCon = "pl", stream = null, ort = null, session = null, modelVer = null;
 let nghieng = false, loHienTai = null, khayVua = null;
-const PHIEN_BAN = "0.5";
+const PHIEN_BAN = "0.6";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -72,44 +70,110 @@ function kiemSang(canvas){
 
 async function vongKiemTra(){
   while(stream){ const c=layKhung(); if(c.width){ const [t,k]=kiemSang(c); the("#k-sang",t,k);
-    if(cv){ const n=timMa(c).size; the("#k-ma", n>=3?`Thấy ${n}/6 mã`:`Chỉ ${n} mã`, n>=3?"ok":"canh"); } else the("#k-ma","Đang tải OpenCV…",""); }
+    const n=timMa(c).size; the("#k-ma", n>=3?`Thấy ${n}/6 mã`:`Chỉ ${n} mã`, n>=3?"ok":"canh"); }
     await new Promise(r=>setTimeout(r,800)); }
 }
 
-// ---- OpenCV.js: ArUco ----
-async function taiOpenCV(){
-  if(window.cv && window.cv.Mat) { cv=window.cv; return; }
-  await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
-  // KHONG await window.cv (Emscripten Module co .then tu tro ve chinh no -> treo trinh duyet). Chi poll cv.Mat.
-  let c=window.cv;
-  for(let i=0;i<150 && !(c&&c.Mat);i++){ await new Promise(r=>setTimeout(r,200)); c=window.cv; }
-  if(!(c&&c.Mat)) throw new Error("opencv");
-  cv=c;
-}
+// ---- js-aruco2: doc ma ArUco ----
+// DICT_4X4_50 cua OpenCV = 50 ma dau cua ARUCO_4X4_1000, nen dung chung tu dien.
+// cv.js + aruco.js + aruco_4x4_1000.js tu host trong lib/, nap bang <script> truoc app.js.
 let ARUCO=null;
-function aruco(){ if(!ARUCO){ const dict=cv.getPredefinedDictionary(cv.DICT_4X4_50); const params=new cv.aruco_DetectorParameters(); const refine=new cv.aruco_RefineParameters(10,3,true); ARUCO=new cv.aruco_ArucoDetector(dict,params,refine); } return ARUCO; }
+function aruco(){ if(!ARUCO) ARUCO=new AR.Detector({dictionaryName:"ARUCO_4X4_1000"}); return ARUCO; }
+function anhTu(canvas){ return canvas.getContext("2d",{willReadFrequently:true}).getImageData(0,0,canvas.width,canvas.height); }
 function timMa(canvas){
-  const src=cv.imread(canvas), gray=new cv.Mat(); cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
-  const det=aruco(), corners=new cv.MatVector(), ids=new cv.Mat(), rej=new cv.MatVector();
-  det.detectMarkers(gray,corners,ids,rej);
-  const tam=new Map();
-  for(let i=0;i<ids.rows;i++){ const id=ids.data32S[i]; if(id>5) continue; const c=corners.get(i).data32F;
-    const canh=(Math.hypot(c[2]-c[0],c[3]-c[1])+Math.hypot(c[4]-c[2],c[5]-c[3])+Math.hypot(c[6]-c[4],c[7]-c[5])+Math.hypot(c[0]-c[6],c[1]-c[7]))/4;
-    const p=[(c[0]+c[2]+c[4]+c[6])/4,(c[1]+c[3]+c[5]+c[7])/4]; p.canh=canh; tam.set(id,p); }
-  src.delete(); gray.delete(); corners.delete(); ids.delete(); rej.delete(); return tam;
+  const tam=new Map(); if(!canvas.width||!canvas.height) return tam;
+  for(const m of aruco().detect(anhTu(canvas))){
+    if(m.id>5) continue;
+    const c=m.corners; let canh=0;
+    for(let i=0;i<4;i++){ const a=c[i], b=c[(i+1)%4]; canh+=Math.hypot(b.x-a.x,b.y-a.y); }
+    const p=[(c[0].x+c[1].x+c[2].x+c[3].x)/4,(c[0].y+c[1].y+c[2].y+c[3].y)/4];
+    p.canh=canh/4; tam.set(m.id,p);
+  }
+  return tam;
 }
+
+// ---- dai so + warp thuan JS (thay cho OpenCV) ----
+// Gauss khu voi chon truc: giai A x = b (A vuong n x n). Tra ve null neu suy bien.
+function giaiHe(A,b,n){
+  for(let i=0;i<n;i++){
+    let p=i; for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[p][i])) p=r;
+    if(Math.abs(A[p][i])<1e-12) return null;
+    if(p!==i){ const t=A[p]; A[p]=A[i]; A[i]=t; const u=b[p]; b[p]=b[i]; b[i]=u; }
+    for(let r=i+1;r<n;r++){ const f=A[r][i]/A[i][i]; if(!f) continue;
+      for(let c=i;c<n;c++) A[r][c]-=f*A[i][c]; b[r]-=f*b[i]; }
+  }
+  const x=new Array(n).fill(0);
+  for(let i=n-1;i>=0;i--){ let t=b[i]; for(let c=i+1;c<n;c++) t-=A[i][c]*x[c]; x[i]=t/A[i][i]; }
+  return x;
+}
+// Binh phuong toi thieu: rows = [[a0..a(n-1), ve_phai], ...] -> giai (A^T A) x = A^T b.
+function binhPhuongToiThieu(rows,n){
+  const A=Array.from({length:n},()=>new Array(n).fill(0)), b=new Array(n).fill(0);
+  for(const r of rows) for(let i=0;i<n;i++){ for(let j=0;j<n;j++) A[i][j]+=r[i]*r[j]; b[i]+=r[i]*r[n]; }
+  return giaiHe(A,b,n);
+}
+// Chuan hoa Hartley: trong tam ve goc, khoang cach trung binh = sqrt(2). Giup he phuong trinh on dinh.
+function chuanHoa(pts){
+  const n=pts.length; let cx=0,cy=0; for(const p of pts){ cx+=p[0]; cy+=p[1]; } cx/=n; cy/=n;
+  let d=0; for(const p of pts) d+=Math.hypot(p[0]-cx,p[1]-cy); d/=n;
+  const s=d>1e-9?Math.SQRT2/d:1;
+  return { T:[s,0,-s*cx, 0,s,-s*cy, 0,0,1], nghich:[1/s,0,cx, 0,1/s,cy, 0,0,1],
+           pts:pts.map(p=>[(p[0]-cx)*s,(p[1]-cy)*s]) };
+}
+function nhan3(A,B){ const C=new Array(9);
+  for(let i=0;i<3;i++) for(let j=0;j<3;j++){ let t=0; for(let k=0;k<3;k++) t+=A[i*3+k]*B[k*3+j]; C[i*3+j]=t; }
+  return C; }
+// Ma tran 3x3 bien diem "tu" -> "den". >=4 diem: homography DLT binh phuong toi thieu; 3 diem: affine.
+function tinhH(tu,den){
+  const n=tu.length; if(n<3||den.length!==n) return null;
+  const a=chuanHoa(tu), b=chuanHoa(den);
+  const affine=n===3, k=affine?6:8, rows=[];
+  for(let i=0;i<n;i++){
+    const u=a.pts[i][0], v=a.pts[i][1], x=b.pts[i][0], y=b.pts[i][1];
+    const r1=[u,v,1,0,0,0], r2=[0,0,0,u,v,1];
+    if(!affine){ r1.push(-u*x,-v*x); r2.push(-u*y,-v*y); }
+    r1.push(x); r2.push(y); rows.push(r1,r2);
+  }
+  const h=binhPhuongToiThieu(rows,k); if(!h||h.some(v=>!isFinite(v))) return null;
+  const Hn=[h[0],h[1],h[2], h[3],h[4],h[5], affine?0:h[6], affine?0:h[7], 1];
+  const H=nhan3(b.nghich, nhan3(Hn, a.T));
+  return H.some(v=>!isFinite(v))?null:H;
+}
+// Warp nguoc thu cong bang ImageData, lay mau song tuyen tinh.
+// H bien toa do anh NAN (da cong offset) -> toa do anh GOC. Diem ra ngoai anh goc de den.
+function warp(canvas,H,w,h,offX,offY){
+  const src=anhTu(canvas), sw=src.width, sh=src.height, sd=src.data;
+  const out=new ImageData(w,h), od=out.data;
+  for(let y=0;y<h;y++){
+    const Y=y+offY;
+    for(let x=0;x<w;x++){
+      const X=x+offX;
+      const d=H[6]*X+H[7]*Y+H[8]; if(!d) continue;
+      const u=(H[0]*X+H[1]*Y+H[2])/d, v=(H[3]*X+H[4]*Y+H[5])/d;
+      if(!(u>=0&&v>=0&&u<=sw-1&&v<=sh-1)) continue;
+      const x0=u|0, y0=v|0, x1=x0+1<sw?x0+1:x0, y1=y0+1<sh?y0+1:y0;
+      const fx=u-x0, fy=v-y0;
+      const w00=(1-fx)*(1-fy), w10=fx*(1-fy), w01=(1-fx)*fy, w11=fx*fy;
+      const i00=(y0*sw+x0)*4, i10=(y0*sw+x1)*4, i01=(y1*sw+x0)*4, i11=(y1*sw+x1)*4, o=(y*w+x)*4;
+      od[o]  =sd[i00]  *w00+sd[i10]  *w10+sd[i01]  *w01+sd[i11]  *w11;
+      od[o+1]=sd[i00+1]*w00+sd[i10+1]*w10+sd[i01+1]*w01+sd[i11+1]*w11;
+      od[o+2]=sd[i00+2]*w00+sd[i10+2]*w10+sd[i01+2]*w01+sd[i11+2]*w11;
+      od[o+3]=255;
+    }
+  }
+  const c=document.createElement("canvas"); c.width=w; c.height=h;
+  c.getContext("2d").putImageData(out,0,0); return c;
+}
+// Nan khay: warp thang ra dung vung long khay (LONG mm), bo le GO mm quanh ma.
 function nanKhay(canvas){
   const tam=timMa(canvas); if(tam.size<3) return {loi:`Chỉ thấy ${tam.size} mã (cần ≥3)`};
-  const ids=[...tam.keys()]; const src=[],dst=[];
-  ids.forEach(id=>{ src.push(...tam.get(id)); dst.push(TAM_MA[id][0]*PX_MM, TAM_MA[id][1]*PX_MM); });
-  const sM=cv.matFromArray(ids.length,1,cv.CV_32FC2,src), dM=cv.matFromArray(ids.length,1,cv.CV_32FC2,dst);
-  const img=cv.imread(canvas), out=new cv.Mat();
-  let M; if(ids.length===3){ M=cv.getAffineTransform(sM,dM); cv.warpAffine(img,out,M,new cv.Size(W_OUT,H_OUT)); }
-  else { M=cv.findHomography(sM,dM,cv.RANSAC,5); cv.warpPerspective(img,out,M,new cv.Size(W_OUT,H_OUT)); }
-  // cat long khay
-  const r=new cv.Rect(Math.round(GO*PX_MM),Math.round(GO*PX_MM),Math.round(LONG[0]*PX_MM),Math.round(LONG[1]*PX_MM)); const long=out.roi(r);
-  const c=document.createElement("canvas"); c.width=long.cols; c.height=long.rows; cv.imshow(c,long);
-  [sM,dM,img,out,M,long].forEach(x=>x.delete&&x.delete()); return {canvas:c, soMa:tam.size};
+  const ids=[...tam.keys()];
+  const tu=ids.map(id=>[TAM_MA[id][0]*PX_MM, TAM_MA[id][1]*PX_MM]);   // toa do khay (px anh nan)
+  const den=ids.map(id=>[tam.get(id)[0], tam.get(id)[1]]);            // toa do anh goc (px)
+  const H=tinhH(tu,den); if(!H) return {loi:"Không tính được phép nắn khay"};
+  const off=Math.round(GO*PX_MM);
+  const c=warp(canvas,H,Math.round(LONG[0]*PX_MM),Math.round(LONG[1]*PX_MM),off,off);
+  return {canvas:c, soMa:tam.size};
 }
 
 // ---- ONNX: YOLO ----
@@ -144,7 +208,6 @@ $("#chup").onclick = () => demKhay(5);
 $("#chup-1").onclick = () => demKhay(1);
 async function demKhay(soKhung){
   if(!stream){ tb("Chưa bật camera."); return; }
-  if(!cv){ tb("OpenCV đang tải (10 MB), đợi thẻ 'Mã ArUco' hết chữ 'Đang tải' rồi bấm lại.",4000); return; }
   if(nghieng) tb("Điện thoại đang nghiêng — vẫn chụp, nhưng nên đặt nằm ngang.",2000);
   const btn=$("#chup"), btn1=$("#chup-1"); btn.disabled=btn1.disabled=true; btn.textContent=soKhung>1?"Đang quay…":"Đang chụp…"; btn1.textContent="…"; const td=$("#td");
   if(navigator.vibrate) navigator.vibrate(60);
@@ -230,7 +293,6 @@ function hieuChuan(canvas){
   const hc={tam:mm,long,go,maMM:MA_MM,ngay:new Date().toISOString(),soMa:ids.length};
   localStorage.hieuChuan=JSON.stringify(hc);
   HC=hc; TAM_MA=hc.tam; LONG=hc.long; GO=hc.go;
-  W_OUT=Math.round((LONG[0]+2*GO)*PX_MM); H_OUT=Math.round((LONG[1]+2*GO)*PX_MM);
   return hc;
 }
 $("#cd-hieu-chuan").onclick=()=>{ if(!stream){ tb("Vào màn Đếm, bật camera, đặt khay trống rồi bấm lại."); return; }
@@ -249,5 +311,6 @@ $("#cd-xoa").onclick=async()=>{ if(confirm("Xóa toàn bộ lô trên máy?")){ 
 // ---- khoi dong ----
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(e){} }
-taiOpenCV().then(()=>the("#k-ma","OpenCV sẵn sàng","")).catch(()=>the("#k-ma","Không tải được OpenCV","loi"));
+the("#k-ma","Mã ArUco: sẵn sàng","");
 taiModel();
+
