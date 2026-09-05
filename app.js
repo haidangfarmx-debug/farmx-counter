@@ -25,7 +25,8 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 
 // ---- trang thai ----
 let loaiCon = "pl", stream = null, cv = null, ort = null, session = null, modelVer = null;
-let nghieng = true, loHienTai = null, khayVua = null;
+let nghieng = false, loHienTai = null, khayVua = null;
+const PHIEN_BAN = "0.3";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -136,8 +137,12 @@ function veBox(canvas,boxes){ const g=canvas.getContext("2d"); g.lineWidth=2; g.
 $("#chup").onclick = () => demKhay(5);
 $("#chup-1").onclick = () => demKhay(1);
 async function demKhay(soKhung){
-  if(!stream) return; if(nghieng){ tb("Đặt điện thoại nằm ngang trên nắp rồi bấm lại."); return; }
-  const btn=$("#chup"), btn1=$("#chup-1"); btn.disabled=btn1.disabled=true; btn.textContent=soKhung>1?"Đang quay…":"Đang chụp…"; const td=$("#td");
+  if(!stream){ tb("Chưa bật camera."); return; }
+  if(nghieng) tb("Điện thoại đang nghiêng — vẫn chụp, nhưng nên đặt nằm ngang.",2000);
+  const btn=$("#chup"), btn1=$("#chup-1"); btn.disabled=btn1.disabled=true; btn.textContent=soKhung>1?"Đang quay…":"Đang chụp…"; btn1.textContent="…"; const td=$("#td");
+  if(navigator.vibrate) navigator.vibrate(60);
+  tb(soKhung>1?"Đang quay 5 giây, giữ yên…":"Đang chụp…",1500);
+  try {
   const khung=[]; for(let i=0;i<soKhung;i++){ if(soKhung>1) await new Promise(r=>setTimeout(r,1000)); khung.push(layKhung()); td.style.width=Math.round((i+1)*60/soKhung)+"%"; }
   btn.textContent="Đang đếm…";
   const [t,k]=kiemSang(khung[2]); if(k==="loi"){ tb("Ảnh "+t.toLowerCase()+". Che nắng hoặc chụp lại."); return reset(); }
@@ -153,7 +158,9 @@ async function demKhay(soKhung){
   e.appendChild(Object.assign(document.createElement("span"),{className:"the ok",textContent:`${soMa}/6 mã`}));
   e.appendChild(Object.assign(document.createElement("span"),{className:"the "+(session?"ok":"canh"),textContent:session?`${ketQua.length} khung: ${ketQua.join(", ")}`:"Chưa có model — chỉ nắn khay"}));
   $("#them-khay").disabled = so===null; reset(); hien("man-kq");
-  function reset(){ btn.disabled=btn1.disabled=false; btn.textContent="Quay 5 giây"; td.style.width="0"; }
+  if(navigator.vibrate) navigator.vibrate([40,40,40]);
+  } catch(e){ tb("Lỗi khi xử lý ảnh: "+(e&&e.message||e),5000); reset(); }
+  function reset(){ btn.disabled=btn1.disabled=false; btn.textContent="Quay 5 giây"; btn1.textContent="Chụp 1 tấm"; td.style.width="0"; }
 }
 $("#chup-lai").onclick=()=>hien("man-dem");
 $("#them-khay").onclick=()=>{ if(!loHienTai) loHienTai={ id:crypto.randomUUID(), thoi_gian:new Date().toISOString(), loai_con:loaiCon, khay:[], anh:[], khach:"", ghi_chu:"" };
@@ -227,6 +234,7 @@ function veCaiDat(){ try{ const hc=JSON.parse(localStorage.hieuChuan||"null"); $
 $("#cd-gop").checked = localStorage.gopAnh==="1"; $("#cd-gop").onchange=e=>localStorage.gopAnh=e.target.checked?"1":"0";
 $("#cd-model-tai").onclick=()=>{ tb("Đang kiểm tra…"); taiModel(); };
 veCaiDat();
+document.querySelector("header b").textContent="FarmX Counter v"+PHIEN_BAN;
 $("#cd-xoa").onclick=async()=>{ if(confirm("Xóa toàn bộ lô trên máy?")){ indexedDB.deleteDatabase("farmx"); localStorage.removeItem("loNhap"); loHienTai=null; tb("Đã xóa."); } };
 
 // ---- khoi dong ----
