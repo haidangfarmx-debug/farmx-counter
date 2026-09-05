@@ -26,7 +26,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = "pl", stream = null, cv = null, ort = null, session = null, modelVer = null;
 let nghieng = false, loHienTai = null, khayVua = null;
-const PHIEN_BAN = "0.3";
+const PHIEN_BAN = "0.4";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -138,6 +138,7 @@ $("#chup").onclick = () => demKhay(5);
 $("#chup-1").onclick = () => demKhay(1);
 async function demKhay(soKhung){
   if(!stream){ tb("Chưa bật camera."); return; }
+  if(!cv){ tb("OpenCV đang tải (10 MB), đợi thẻ 'Mã ArUco' hết chữ 'Đang tải' rồi bấm lại.",4000); return; }
   if(nghieng) tb("Điện thoại đang nghiêng — vẫn chụp, nhưng nên đặt nằm ngang.",2000);
   const btn=$("#chup"), btn1=$("#chup-1"); btn.disabled=btn1.disabled=true; btn.textContent=soKhung>1?"Đang quay…":"Đang chụp…"; btn1.textContent="…"; const td=$("#td");
   if(navigator.vibrate) navigator.vibrate(60);
@@ -145,7 +146,7 @@ async function demKhay(soKhung){
   try {
   const khung=[]; for(let i=0;i<soKhung;i++){ if(soKhung>1) await new Promise(r=>setTimeout(r,1000)); khung.push(layKhung()); td.style.width=Math.round((i+1)*60/soKhung)+"%"; }
   btn.textContent="Đang đếm…";
-  const [t,k]=kiemSang(khung[2]); if(k==="loi"){ tb("Ảnh "+t.toLowerCase()+". Che nắng hoặc chụp lại."); return reset(); }
+  const [t,k]=kiemSang(khung[Math.floor(khung.length/2)]); if(k==="loi"){ tb("Ảnh "+t.toLowerCase()+". Che nắng hoặc chụp lại."); return reset(); }
   const ketQua=[]; let anhCuoi=null, soMa=0;
   for(const c of khung){ const n=nanKhay(c); if(n.loi){ continue; } soMa=n.soMa;
     if(session){ const bx=await demYolo(n.canvas); ketQua.push(bx.length); anhCuoi=veBox(n.canvas,bx); } else { anhCuoi=n.canvas; }
