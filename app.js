@@ -6,14 +6,18 @@ const SUPABASE_URL = "https://xofhpbfiuolkcbwbxume.supabase.co";
 const SUPABASE_KEY = "sb_publishable_DeOQ4ZYgl_6Oxth4eYyrbg_EBiJ6unP";
 const MODEL_URL = SUPABASE_URL + "/storage/v1/object/public/counter-model/dem_v1.onnx"; // upload sau khi train
 
-// ---- thong so khay (mm), khop dem_khay.py ----
-const LONG = [500, 350], GO = 25, PX_MM = 2; // 2 px/mm -> anh nan 1100x800 (nhe cho dien thoai)
-const TAM_MA = {
-  0: [GO/2+20, GO/2], 1: [GO+LONG[0]-20+GO/2, GO/2],
-  2: [GO/2+20, GO+LONG[1]+GO/2], 3: [GO+LONG[0]-20+GO/2, GO+LONG[1]+GO/2],
-  4: [GO+LONG[0]/2, GO/2], 5: [GO+LONG[0]/2, GO+LONG[1]+GO/2],
+// ---- thong so khay (mm) — hieu chuan tu anh khay that cua Hai Dang (IMG_4370, 05/09/2026) ----
+// Goc toa do = tam ma ID0 dich (25,25). Vi tri 6 ma do tu anh, ma canh 25 mm (in A4).
+const PX_MM = 2;
+const HC_MAC_DINH = {
+  ma: { 0:[25,25], 1:[495,25], 2:[24.4,312], 3:[507,306], 4:[269.3,20.1], 5:[271.2,311.3] },
+  long: [45, 45, 440, 240]   // vung lam long khay de dem: x, y, rong, cao (mm) — nam giua cac ma
 };
-const W_OUT = (LONG[0]+2*GO)*PX_MM, H_OUT = (LONG[1]+2*GO)*PX_MM;
+let HC = HC_MAC_DINH;
+try { if (localStorage.hieuChuan) HC = JSON.parse(localStorage.hieuChuan); } catch(e){}
+const TAM_MA = HC.ma;
+const W_OUT = Math.round((Math.max(...Object.values(TAM_MA).map(p=>p[0]))+25)*PX_MM);
+const H_OUT = Math.round((Math.max(...Object.values(TAM_MA).map(p=>p[1]))+25)*PX_MM);
 
 const $ = s => document.querySelector(s);
 const tb = (m, ms=2500) => { const e=$("#tb"); e.textContent=m; e.style.display="block"; clearTimeout(tb.t); tb.t=setTimeout(()=>e.style.display="none", ms); };
@@ -82,7 +86,9 @@ function timMa(canvas){
   const det=aruco(), corners=new cv.MatVector(), ids=new cv.Mat(), rej=new cv.MatVector();
   det.detectMarkers(gray,corners,ids,rej);
   const tam=new Map();
-  for(let i=0;i<ids.rows;i++){ const id=ids.data32S[i]; if(!(id in TAM_MA)) continue; const c=corners.get(i).data32F; tam.set(id,[(c[0]+c[2]+c[4]+c[6])/4,(c[1]+c[3]+c[5]+c[7])/4]); }
+  for(let i=0;i<ids.rows;i++){ const id=ids.data32S[i]; if(id>5) continue; const c=corners.get(i).data32F;
+    const canh=(Math.hypot(c[2]-c[0],c[3]-c[1])+Math.hypot(c[4]-c[2],c[5]-c[3])+Math.hypot(c[6]-c[4],c[7]-c[5])+Math.hypot(c[0]-c[6],c[1]-c[7]))/4;
+    const p=[(c[0]+c[2]+c[4]+c[6])/4,(c[1]+c[3]+c[5]+c[7])/4]; p.canh=canh; tam.set(id,p); }
   src.delete(); gray.delete(); corners.delete(); ids.delete(); rej.delete(); return tam;
 }
 function nanKhay(canvas){
@@ -94,7 +100,7 @@ function nanKhay(canvas){
   let M; if(ids.length===3){ M=cv.getAffineTransform(sM,dM); cv.warpAffine(img,out,M,new cv.Size(W_OUT,H_OUT)); }
   else { M=cv.findHomography(sM,dM,cv.RANSAC,5); cv.warpPerspective(img,out,M,new cv.Size(W_OUT,H_OUT)); }
   // cat long khay
-  const r=new cv.Rect(GO*PX_MM,GO*PX_MM,LONG[0]*PX_MM,LONG[1]*PX_MM); const long=out.roi(r);
+  const r=new cv.Rect(HC.long[0]*PX_MM,HC.long[1]*PX_MM,HC.long[2]*PX_MM,HC.long[3]*PX_MM); const long=out.roi(r);
   const c=document.createElement("canvas"); c.width=long.cols; c.height=long.rows; cv.imshow(c,long);
   [sM,dM,img,out,M,long].forEach(x=>x.delete&&x.delete()); return {canvas:c, soMa:tam.size};
 }
@@ -188,9 +194,39 @@ async function gopAnh(l){ for(let i=0;i<l.anh.length;i++){ const blob=await (awa
   if(up.ok) await fetch(SUPABASE_URL+"/rest/v1/counter_anh_gop",{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},
     body:JSON.stringify({thiet_bi_id:thietBiId,lo_id:l.id,loai_con:l.loai_con,so_may_dem:l.khay[i],so_sau_sua:l.khay[i],model_ver:l.model_ver,duong_dan:path})}); } }
 
+// ---- hieu chuan tu anh khay trong ----
+// Chup khay trong: tu 6 ma (>=4) suy ra vi tri tung ma theo mm. He toa do: ID0 goc tren-trai.
+function hieuChuan(canvas){
+  const tam=timMa(canvas); if(tam.size<4) return {loi:`Chỉ thấy ${tam.size} mã, cần ≥ 4`};
+  const ids=[...tam.keys()];
+  // px/mm tu canh ma
+  const s=ids.reduce((a,id)=>a+tam.get(id).canh,0)/ids.length/MA_MM;
+  // truc: ID0->ID1 la canh dai (x), ID0->ID2 la canh ngan (y). Neu thieu, dung ID3/ID4/ID5 thay.
+  const P=id=>tam.get(id); const need=[0,1,2].every(i=>tam.has(i));
+  let o,ux,uy;
+  if(need){ o=P(0); const dx=[P(1)[0]-o[0],P(1)[1]-o[1]]; const dy=[P(2)[0]-o[0],P(2)[1]-o[1]];
+    ux=[dx[0]/Math.hypot(...dx),dx[1]/Math.hypot(...dx)]; uy=[dy[0]/Math.hypot(...dy),dy[1]/Math.hypot(...dy)]; }
+  else return {loi:"Cần thấy đủ mã 1, 2, 3 (ID0, ID1, ID2) để hiệu chuẩn"};
+  const mm={}; let maxX=0,maxY=0;
+  for(const id of ids){ const p=P(id); const v=[p[0]-o[0],p[1]-o[1]]; const x=(v[0]*ux[0]+v[1]*ux[1])/s, y=(v[0]*uy[0]+v[1]*uy[1])/s; mm[id]=[x,y]; maxX=Math.max(maxX,x); maxY=Math.max(maxY,y); }
+  // dat goc: tam ID0 nam tai (GO/2+20, GO/2) nhu cu -> dich toan bo
+  const go=25, ox=go/2+20, oy=go/2;
+  for(const id in mm){ mm[id]=[mm[id][0]+ox, mm[id][1]+oy]; }
+  const long=[Math.round(maxX+ox+ox-go), Math.round(maxY+oy+oy-go)];
+  const hc={tam:mm,long,go,maMM:MA_MM,ngay:new Date().toISOString(),soMa:ids.length};
+  localStorage.hieuChuan=JSON.stringify(hc); TAM_MA=mm; LONG=long; GO=go; W_OUT=(LONG[0]+2*GO)*PX_MM; H_OUT=(LONG[1]+2*GO)*PX_MM;
+  return hc;
+}
+$("#cd-hieu-chuan").onclick=()=>{ if(!stream){ tb("Vào màn Đếm, bật camera, đặt khay trống rồi bấm lại."); return; }
+  const c=layKhung(); const r=hieuChuan(c); if(r.loi){ tb(r.loi); return; }
+  tb(`Hiệu chuẩn xong: ${r.soMa} mã, khay ${r.long[0]}×${r.long[1]} mm`,4000); veCaiDat(); };
+$("#cd-ma-mm").onchange=e=>{ MA_MM=+e.target.value; localStorage.maMM=MA_MM; };
+function veCaiDat(){ try{ const hc=JSON.parse(localStorage.hieuChuan||"null"); $("#cd-hc").textContent = hc ? `${hc.soMa} mã · ${hc.long[0]}×${hc.long[1]} mm · ${new Date(hc.ngay).toLocaleDateString("vi")}` : "chưa có (đang dùng mặc định)"; }catch(e){} $("#cd-ma-mm").value=MA_MM; }
+
 // ---- cai dat ----
 $("#cd-gop").checked = localStorage.gopAnh==="1"; $("#cd-gop").onchange=e=>localStorage.gopAnh=e.target.checked?"1":"0";
 $("#cd-model-tai").onclick=()=>{ tb("Đang kiểm tra…"); taiModel(); };
+veCaiDat();
 $("#cd-xoa").onclick=async()=>{ if(confirm("Xóa toàn bộ lô trên máy?")){ indexedDB.deleteDatabase("farmx"); localStorage.removeItem("loNhap"); loHienTai=null; tb("Đã xóa."); } };
 
 // ---- khoi dong ----
