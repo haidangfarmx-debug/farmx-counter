@@ -93,7 +93,10 @@ có IoU nhỏ nên NMS không dọn được — `gopCum()` mới dọn được
   với cỡ con giống và độ phóng đại của ảnh nắn — không phải chỉnh khi đổi loại con.
 - Duyệt theo điểm giảm dần, giữ khung nếu nó không nằm trong ngưỡng của khung đã giữ. Nghĩa là
   một chuỗi khung sát nhau sẽ gộp hết về một.
-- Hệ số mặc định 0,8, chỉnh trong Cài đặt > Nâng cao (`localStorage.heSoGop`, chặn ngoài khoảng 0–10).
+- Hệ số mặc định **riêng theo model** (`HE_SO_MD`): `dem_v01` = 1,2, `dem_v0` = 0,8. Model khác cho
+  ra khung to nhỏ khác nhau nên ngưỡng gộp phải khác. Chỉnh tay thì lưu riêng theo model trong
+  `localStorage.heSoGopTheoModel` (JSON `{model: hệ số}`); đổi model là lấy lại hệ số của model đó,
+  không dính hệ số vừa chỉnh cho model kia.
 - Màn kết quả hiện "Trước gộp X · sau gộp Y (hệ số Z)" chữ nhỏ xám dưới ảnh.
 
 ## onnxruntime-web tự host (v1.5)

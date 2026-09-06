@@ -20,8 +20,20 @@ const CHE_MA = 35;          // o che quanh moi ma = 35 don vi = 1,4 lan canh ma
 const PX_DV = 2;            // px moi don vi trong anh nan
 const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan
 const SO_MA = 6;            // khay dan 6 ma ID 0-5 (timMa da loc bo ID > 5)
-const HE_SO_GOP_MD = 0.8;   // he so gop cum mac dinh (chinh duoc trong Cai dat > Nang cao)
-let heSoGop = (()=>{ const v=parseFloat(localStorage.heSoGop); return (v>0 && v<10) ? v : HE_SO_GOP_MD; })();
+// He so gop cum mac dinh RIENG cho tung model — moi model cho ra khung to nho khac nhau
+// nen nguong gop phai khac. Nguoi dung chinh tay thi luu rieng theo model.
+const HE_SO_MD = { dem_v01: 1.2, dem_v0: 0.8 };
+const heSoMacDinh = m => HE_SO_MD[m] ?? 0.8;
+function docHeSo(){
+  let m={}; try{ m=JSON.parse(localStorage.heSoGopTheoModel||"{}")||{}; }catch(e){}
+  const v=parseFloat(m[modelChon]);
+  return (v>0 && v<10) ? v : heSoMacDinh(modelChon);
+}
+function luuHeSo(v){
+  let m={}; try{ m=JSON.parse(localStorage.heSoGopTheoModel||"{}")||{}; }catch(e){}
+  m[modelChon]=v; localStorage.heSoGopTheoModel=JSON.stringify(m);
+}
+let heSoGop = docHeSo();
 let loiModel = null, epDung = null;      // thong bao loi nap model, va execution provider dang dung
 let tienDoModel = null, dangTaiModel = false;
 const HET_GIO_MODEL = 90000;             // 90 s
@@ -48,7 +60,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
-const PHIEN_BAN = "1.6";
+const PHIEN_BAN = "1.6.1";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -653,12 +665,17 @@ $("#cd-model-chon").value = modelChon;
 $("#cd-model-chon").onchange = e => {
   modelChon = MODELS[e.target.value] ? e.target.value : MODEL_MD;
   localStorage.modelChon = modelChon; e.target.value = modelChon;
-  tb("Đang đổi sang "+modelChon+"…"); taiModel();
+  heSoGop = docHeSo(); $("#cd-he-so").value = heSoGop; veGhiChuHeSo();
+  tb(`Đang đổi sang ${modelChon}… (hệ số gộp ${heSoGop})`); taiModel();
 };
-$("#cd-he-so").value = heSoGop;
+function veGhiChuHeSo(){
+  $("#cd-he-so-ghi").textContent =
+    `Hai khung có tâm gần nhau hơn hệ số × chiều dài trung vị thì gộp làm một con. Cao hơn = gộp mạnh hơn. Mặc định của ${modelChon} là ${heSoMacDinh(modelChon)}.`;
+}
+$("#cd-he-so").value = heSoGop; veGhiChuHeSo();
 $("#cd-he-so").onchange = e => {
   const v=parseFloat(e.target.value);
-  if(v>0 && v<10){ heSoGop=v; localStorage.heSoGop=v; } else { e.target.value=heSoGop; }
+  if(v>0 && v<10){ heSoGop=v; luuHeSo(v); } else { e.target.value=heSoGop; }
 };
 $("#cd-nhac").checked = batNhac(); $("#cd-nhac").onchange=e=>localStorage.nhac=e.target.checked?"1":"0";
 $("#cd-gop").checked = localStorage.gopAnh==="1"; $("#cd-gop").onchange=e=>localStorage.gopAnh=e.target.checked?"1":"0";
@@ -674,6 +691,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 
