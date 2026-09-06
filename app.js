@@ -4,8 +4,11 @@
 
 const SUPABASE_URL = "https://xofhpbfiuolkcbwbxume.supabase.co";
 const SUPABASE_KEY = "sb_publishable_DeOQ4ZYgl_6Oxth4eYyrbg_EBiJ6unP";
-const MODEL_URL = "./model/dem_v0.onnx";   // YOLO11n, imgsz 1280, 1 class — tu host trong repo
-const MODEL_VER = "dem_v0";
+// Model tu host trong repo. Cung kien truc: YOLO11n, input [1,3,1280,1280], output [1,5,33600].
+// Giu ban cu de doi chieu khi ban moi dem lech.
+const MODELS = { dem_v01: "./model/dem_v01.onnx", dem_v0: "./model/dem_v0.onnx" };
+const MODEL_MD = "dem_v01";
+let modelChon = MODELS[localStorage.modelChon] ? localStorage.modelChon : MODEL_MD;
 
 // ---- thong so nan khay ----
 // KHONG con hieu chuan luu tru. Moi tam anh tu dung lai mat phang khay tu chinh cac ma trong no.
@@ -36,7 +39,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
-const PHIEN_BAN = "1.3";
+const PHIEN_BAN = "1.4";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -371,11 +374,12 @@ function nanTuMa(nho, tam){
 
 // ---- ONNX: YOLO ----
 async function taiModel(){
+  session=null; modelVer=null; $("#tt-model").textContent="đang tải model…"; veKiem(soMaCuoi);
   try{
     if(!window.ort){ await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
-    ort=window.ort; const r=await fetch(MODEL_URL,{cache:"force-cache"}); if(!r.ok) throw 0;
+    ort=window.ort; const r=await fetch(MODELS[modelChon],{cache:"force-cache"}); if(!r.ok) throw 0;
     session=await ort.InferenceSession.create(await r.arrayBuffer(),{executionProviders:["webgpu","wasm"]});
-    modelVer=MODEL_VER; $("#tt-model").textContent="model "+modelVer; $("#cd-model").textContent=modelVer;
+    modelVer=modelChon; $("#tt-model").textContent="model "+modelVer; $("#cd-model").textContent=modelVer;
   }catch(e){ session=null; modelVer=null; $("#tt-model").textContent="chưa có model"; $("#cd-model").textContent="chưa có — sẽ tự tải khi có"; }
   veKiem(soMaCuoi);   // o kiem Model doi mau ngay, khong cho vong xem truoc
 }
@@ -567,6 +571,12 @@ function epVuong(p, M){
 }
 // ---- cai dat ----
 function veCaiDat(){ $("#cd-pb").textContent=PHIEN_BAN; capNhatLoai(); }
+$("#cd-model-chon").value = modelChon;
+$("#cd-model-chon").onchange = e => {
+  modelChon = MODELS[e.target.value] ? e.target.value : MODEL_MD;
+  localStorage.modelChon = modelChon; e.target.value = modelChon;
+  tb("Đang đổi sang "+modelChon+"…"); taiModel();
+};
 $("#cd-he-so").value = heSoGop;
 $("#cd-he-so").onchange = e => {
   const v=parseFloat(e.target.value);
@@ -586,6 +596,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 

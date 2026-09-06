@@ -5,7 +5,7 @@ PWA chạy trên điện thoại, mở bằng link. Đếm tôm PL / tôm ương
 
 ## Kiến trúc (giữ nguyên)
 - Static site, KHÔNG build step: `index.html` + `app.js` + `sw.js` + `manifest.json` + `icon.svg` ở gốc repo. Cloudflare Pages deploy thẳng (build command trống, output `/`).
-- AI chạy trong trình duyệt, KHÔNG dùng OpenCV.js (đã bỏ ở v0.6, nó nặng 10 MB). Đọc mã ArUco bằng js-aruco2 tự host trong `lib/` (`cv.js` + `aruco.js` + `aruco_4x4_1000.js`, tổng 54 KB); homography và nắn khay tự viết thuần JS trong `app.js`. ONNX Runtime Web vẫn tải từ jsdelivr, chỉ khi có model. Model YOLO11n ONNX tự host trong repo tại `model/dem_v0.onnx` (10,6 MB, opset 12, input `[1,3,1280,1280]`, output `[1,5,33600]`, 1 class `shrimp`).
+- AI chạy trong trình duyệt, KHÔNG dùng OpenCV.js (đã bỏ ở v0.6, nó nặng 10 MB). Đọc mã ArUco bằng js-aruco2 tự host trong `lib/` (`cv.js` + `aruco.js` + `aruco_4x4_1000.js`, tổng 54 KB); homography và nắn khay tự viết thuần JS trong `app.js`. ONNX Runtime Web vẫn tải từ jsdelivr, chỉ khi có model. Model YOLO11n ONNX tự host trong `model/`: `dem_v01.onnx` (mặc định) và `dem_v0.onnx` (giữ để đối chiếu). Cùng kiến trúc: 10,6 MB, opset 12, input `[1,3,1280,1280]`, output `[1,5,33600]`, 1 class `shrimp`. Chọn bản nào trong Cài đặt > Nâng cao (`localStorage.modelChon`).
 - Supabase project `farmx-web` (xofhpbfiuolkcbwbxume): bảng `counter_lo`, `counter_anh_gop`, `counter_model`; bucket `counter-anh` (riêng tư), `counter-model` (public). Anon key nằm trong `app.js`. Chỉ ghi lô + ảnh góp opt-in; không xử lý AI trên server.
 - Lưu cục bộ: IndexedDB `farmx` store `lo`; nháp lô trong localStorage `loNhap`.
 - Service worker: file cùng origin = mạng trước cache sau; thư viện CDN = cache trước. Đổi tên `CACHE` trong `sw.js` khi phát hành.
@@ -71,8 +71,8 @@ Không thêm bước, không thêm nút vào luồng này. Thông số kỹ thu�
   so sánh trực tiếp được**. Muốn số ổn định thì phải thấy đủ 6 mã.
 - Thanh 4 bước `moBuoc()`: mỗi bước hiện ít nhất 300 ms. Kết quả ghi "Xong 4/4" / "Dừng ở bước n/4".
 
-## Model dem_v0
-- `model/dem_v0.onnx` — YOLO11n xuất từ Ultralytics 8.4.142, train imgsz 640 trên patch, export imgsz 1280.
+## Model
+- `model/dem_v01.onnx` (mặc định) và `model/dem_v0.onnx` — YOLO11n từ Ultralytics 8.4.142, train imgsz 640 trên patch, export imgsz 1280. Hai file trùng dung lượng nhưng khác trọng số (SHA-256 khác, export 03:05 vs 06:08 ngày 6/9/2026).
 - Hậu xử lý trong `demYolo()` khớp `[1, 4+nc, N]`; không sửa gì khi đổi model cùng dạng.
 - Suy luận **2,5–3,2 s mỗi khung** trên wasm (đo trên Mac). Ba khung ≈ 8–10 s. Trên iPhone có WebGPU
   sẽ nhanh hơn; `executionProviders` đã để `["webgpu","wasm"]`.
