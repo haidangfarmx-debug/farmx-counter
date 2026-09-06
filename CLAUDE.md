@@ -78,3 +78,9 @@ Không thêm bước, không thêm nút vào luồng này. Thông số kỹ thu�
   sẽ nhanh hơn; `executionProviders` đã để `["webgpu","wasm"]`.
 - Khay trống: 0 con ở cả conf 0,25 lẫn 0,05, trên cả hai ảnh mẫu → không có báo động giả.
 - **Giấy phép: AGPL-3.0** (Ultralytics). Cân nhắc trước khi bán box kèm model này.
+
+## Dòng nhắc kỹ thuật
+"Nước sạch, mỏng ~5 mm — rác lắng đáy, tôm dễ thấy" — hiện 3 giây trên video, có nút X, tự ẩn.
+Nhắc **một lần cho mỗi lô** (cờ `daNhacLo`, đặt lại khi xong lô hoặc hủy lô), không nhắc lại
+sau mỗi lần "Chụp tiếp" — nhắc mọi lần vào màn Đếm sẽ thành phiền.
+Tắt được ở Cài đặt > "Nhắc trước khi chụp" (`localStorage.nhac`, mặc định bật).

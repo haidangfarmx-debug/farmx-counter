@@ -65,6 +65,12 @@ img.kq{width:100%;border-radius:14px;display:block}
 .bang.canh{background:rgba(150,98,20,.92)}
 .bang.loi{background:rgba(168,32,25,.94)}
 .khung{cursor:pointer}
+.nhac{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);z-index:3;
+  background:rgba(0,0,0,.78);color:#fff;padding:18px 44px 18px 18px;border-radius:14px;
+  font-size:21px;font-weight:700;line-height:1.35;text-align:center;display:none}
+.nhac.hien{display:block}
+.nhac-x{position:absolute;top:6px;right:6px;width:38px;height:38px;border:0;border-radius:50%;
+  background:rgba(255,255,255,.18);color:#fff;font:inherit;font-size:19px;line-height:1;padding:0}
 /* A. 3 o kiem truoc khi chup */
 .kiem{display:flex;flex-direction:column;gap:6px;margin:12px 0 4px}
 .o{padding:9px 13px;border-radius:10px;font-size:15px;font-weight:600;line-height:1.3}
@@ -124,6 +130,7 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
     <video id="cam" playsinline muted autoplay></video>
     <canvas id="ve" class="ve"></canvas>
     <button class="chip-loai" id="chip-loai">Tôm PL</button>
+    <div class="nhac" id="nhac">Nước sạch, mỏng ~5 mm — rác lắng đáy, tôm dễ thấy<button class="nhac-x" id="nhac-x" aria-label="Đóng">✕</button></div>
     <div class="bang" id="bang">
       <p class="bang-chinh" id="bang-chinh">Đang bật camera…</p>
       <p class="bang-phu" id="bang-phu"></p>
@@ -179,6 +186,7 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
 <section class="man" id="man-cd">
   <h1>Cài đặt</h1>
   <div class="hang"><span>Loại con giống</span><b id="cd-loai">—</b></div>
+  <div class="hang"><span>Nhắc trước khi chụp</span><b><input type="checkbox" id="cd-nhac" style="width:24px;height:24px"></b></div>
   <div class="hang"><span>Góp ảnh để cải thiện model</span><b><input type="checkbox" id="cd-gop" style="width:24px;height:24px"></b></div>
   <p class="phu" style="margin-top:10px">Ảnh khay gửi ngầm khi có WiFi, không kèm tên khách, không kèm vị trí.</p>
   <button class="nut phu2" id="cd-model-tai">Kiểm tra model mới</button>

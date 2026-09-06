@@ -33,8 +33,8 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
-let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0;
-const PHIEN_BAN = "1.2.1";
+let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
+const PHIEN_BAN = "1.2.2";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -44,7 +44,7 @@ function hien(m){
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("dang", b.dataset.m===m));
   document.body.classList.toggle("che-nav", m==="man-loai");   // buoc 1 khong co thanh dieu huong
   if(m==="man-ls") veLichSu(); if(m==="man-lo") veLo(); if(m==="man-cd") veCaiDat();
-  if(m==="man-dem") batCamera();
+  if(m==="man-dem"){ batCamera(); nhacNho(); } else anNhac();
 }
 // ---- buoc 1: dem con gi ----
 const tenLoai=v=>({pl:"Tôm PL",tom_uong:"Tôm ương",ca_giong:"Cá giống"})[v]||v;
@@ -64,6 +64,17 @@ function trangThai(chinh, phu, kieu){
   $("#bang").style.display = (chinh||phu) ? "" : "none";
 }
 const ghiChuModel = () => session ? "" : "Model đang cập nhật — vẫn chụp được, chưa ra số";
+// Dong nhac ky thuat, hien 3 giay roi tu an. Nhac MOT lan cho moi lo (khi vao man Dem),
+// khong nhac lai sau moi lan "Chụp tiếp" — nhac moi lan se thanh phien.
+const batNhac = () => (localStorage.nhac ?? "1") === "1";
+function anNhac(){ $("#nhac").classList.remove("hien"); clearTimeout(anNhac.t); }
+function nhacNho(){
+  if(!batNhac() || daNhacLo) return;
+  daNhacLo = true;
+  $("#nhac").classList.add("hien");
+  clearTimeout(anNhac.t); anNhac.t = setTimeout(anNhac, 3000);
+}
+$("#nhac-x").onclick = e => { e.stopPropagation(); anNhac(); };
 // Nut do: khong chup duoc thi xam + ghi ly do ngay duoi nut, khong im lang.
 function nutChup(bat, chu){
   const b=$("#chup"); b.disabled=!bat; b.classList.toggle("tat", !bat); $("#chup-chu").textContent=chu;
@@ -478,11 +489,11 @@ function veLo(){ const l=loHienTai; $("#lo-tong").textContent=l?l.khay.reduce((a
   $("#lo-khay").textContent=l?l.khay.length:"0"; $("#lo-loai").textContent=l?tenLoai(l.loai_con):"—"; $("#lo-tung").textContent=l?l.khay.join(" + "):"—";
   if(l){ $("#lo-khach").value=l.khach; $("#lo-ghi").value=l.ghi_chu; } }
 $("#lo-them").onclick=()=>hien("man-dem");
-$("#lo-huy").onclick=()=>{ if(confirm("Hủy lô đang đếm?")){ loHienTai=null; localStorage.removeItem("loNhap"); hien("man-dem"); } };
+$("#lo-huy").onclick=()=>{ if(confirm("Hủy lô đang đếm?")){ loHienTai=null; localStorage.removeItem("loNhap"); daNhacLo=false; hien("man-dem"); } };
 $("#lo-khach").oninput=e=>{ if(loHienTai){ loHienTai.khach=e.target.value; luuNhap(); } };
 $("#lo-ghi").oninput=e=>{ if(loHienTai){ loHienTai.ghi_chu=e.target.value; luuNhap(); } };
 function luuNhap(){ localStorage.loNhap=JSON.stringify(loHienTai); }
-$("#lo-xong").onclick=async()=>{ const l=loHienTai; if(!l||!l.khay.length) return tb("Chưa có khay nào.");
+$("#lo-xong").onclick=async()=>{ const l=loHienTai; if(!l||!l.khay.length) return tb("Chưa có khay nào."); daNhacLo=false;   // lo sau nhac lai
   l.so_con=l.khay.reduce((a,b)=>a+b,0); l.model_ver=modelVer; await dbLuu(l); loHienTai=null; localStorage.removeItem("loNhap");
   tb("Đã lưu lô. Báo cáo PDF: v1.1"); dongBo(l); hien("man-ls"); };
 
@@ -522,6 +533,7 @@ function epVuong(p, M){
 }
 // ---- cai dat ----
 function veCaiDat(){ $("#cd-pb").textContent=PHIEN_BAN; capNhatLoai(); }
+$("#cd-nhac").checked = batNhac(); $("#cd-nhac").onchange=e=>localStorage.nhac=e.target.checked?"1":"0";
 $("#cd-gop").checked = localStorage.gopAnh==="1"; $("#cd-gop").onchange=e=>localStorage.gopAnh=e.target.checked?"1":"0";
 $("#cd-model-tai").onclick=()=>{ tb("Đang kiểm tra…"); taiModel(); };
 veCaiDat();
@@ -535,6 +547,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 
