@@ -1,3 +1,11 @@
+> **NGUYÊN TẮC CỐ ĐỊNH — ĐỌC TRƯỚC KHI SỬA BẤT CỨ THỨ GÌ**
+>
+> **Người dùng chỉ làm 3 việc: chọn loại con → bấm CHỤP → bấm LƯU.**
+>
+> **Không có nút sửa, hoàn tác, xóa nghi đôi, chỉnh hệ số, chọn model trong luồng thường.
+> Mọi xử lý là tự động.** Mọi thứ chỉnh tay nằm sau Cài đặt > Nâng cao > "Chế độ kiểm thử",
+> mặc định TẮT. Thêm bất kỳ nút nào vào luồng chụp là vi phạm nguyên tắc này.
+
 # FarmX Counter — web-app đếm con giống (Tray v1)
 
 ## Dự án là gì

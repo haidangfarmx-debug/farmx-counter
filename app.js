@@ -36,6 +36,9 @@ function luuHeSo(v){
 let heSoGop = docHeSo();
 // Gop thong minh: xet anh that giua hai tam de biet mot than hay hai con. Mac dinh bat.
 const batGopTM = () => (localStorage.gopThongMinh ?? "1") === "1";
+// Che do kiem thu: MAC DINH TAT. Nguoi dung chi lam 3 viec — chon loai con, CHUP, LUU.
+// Bat len moi hien sua tay tren anh ket qua va cac nut chinh trong Nang cao.
+const batKiemThu = () => localStorage.kiemThu === "1";
 const SO_DIEM_XET = 20;    // so diem lay doc doan noi hai tam
 const TY_LE_LIEN  = 0.8;   // >= 80% diem khac nen ro -> cung mot than
 const HE_SO_XET   = 2;     // chi xet cap co tam cach nhau < 2 x chieu dai trung vi
@@ -67,7 +70,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "1.9.2";
+const PHIEN_BAN = "2.0";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -761,6 +764,7 @@ function veSuaTay(){
   g.setTransform(1,0,0,1,0,0);
   const may=suaTay.soMay, chot=soChot(), d=chot-may;
   $("#so-con").textContent = chot.toLocaleString("vi");
+  if(!batKiemThu()){ $("#kq-sua").textContent=""; $("#kq-doi").textContent=""; return; }
   $("#kq-sua").textContent = `Máy: ${may} · Sửa: ${d>0?"+":d<0?"−":"±"}${Math.abs(d)} · Chốt: ${chot}`;
   const nCap = suaTay.cap.filter(([x,y])=>!suaTay.hop[x].xoa && !suaTay.hop[y].xoa).length;
   $("#kq-doi").textContent = nCap ? `${nCap} cặp khung nằm sát nhau — bấm "Xóa hết nghi đôi" để bỏ bớt` : "";
@@ -788,6 +792,7 @@ function keo(dxCss, dyCss){
   z.tx += dxCss*c.width/r.width; z.ty += dyCss*c.height/r.height; ganBien();
 }
 function chamAnh(cxCss, cyCss){
+  if(!batKiemThu()) return;   // luong thuong: anh ket qua chi de XEM, khong sua duoc
   const c=$("#anh-kq"), r=c.getBoundingClientRect(), z=suaTay.zoom;
   if(!r.width) return;
   const X=(cxCss-r.left)*c.width/r.width, Y=(cyCss-r.top)*c.height/r.height;
@@ -896,10 +901,14 @@ function raKetQua(r){
     phuEl.textContent = heto ? `Trung vị ${khayVua.khung.length}/${r.soKhung} khung · thấy ${r.soMa} mã`
                              : "Model đang cập nhật — đã nắn khay, chưa ra số";
     anh.style.display="";
-    ht.style.display = heto ? "" : "none";
-    chi.textContent = heto ? "Mỗi con một màu · chạm để bỏ · chạm chỗ trống để thêm · chụm 2 ngón để phóng to" : "";
-    if(!heto){ $("#kq-sua").textContent=""; $("#kq-doi").textContent=""; }
-    $("#kq-gop").textContent = (heto && r.soTruoc!=null)
+    // Luong thuong: anh chi de XEM. Moi nut sua chi hien trong Che do kiem thu.
+    const kt = batKiemThu();
+    ht.style.display = (heto && kt) ? "" : "none";
+    chi.textContent = !heto ? ""
+      : kt ? "Mỗi con một màu · chạm để bỏ · chạm chỗ trống để thêm · chụm 2 ngón để phóng to"
+           : "Mỗi con một màu · chụm 2 ngón để phóng to xem";
+    if(!heto || !kt){ $("#kq-sua").textContent=""; $("#kq-doi").textContent=""; }
+    $("#kq-gop").textContent = (heto && kt && r.soTruoc!=null)
       ? `Trước gộp ${r.soTruoc.toLocaleString("vi")} · sau gộp ${r.so.toLocaleString("vi")} · ${batGopTM()?"gộp thông minh":"hệ số "+heSoGop}`
       : "";
     luu.style.display=""; luu.disabled=!heto; tiep.textContent="Chụp tiếp";
@@ -980,6 +989,13 @@ function epVuong(p, M){
 }
 // ---- cai dat ----
 function veCaiDat(){ $("#cd-pb").textContent=PHIEN_BAN; capNhatLoai(); }
+$("#cd-kiem-thu").checked = batKiemThu();
+$("#cd-kiem-thu").onchange = e => {
+  localStorage.kiemThu = e.target.checked ? "1" : "0";
+  veCheDoKiemThu(); if(suaTay) veSuaTay();
+};
+function veCheDoKiemThu(){ $("#kt-nang-cao").style.display = batKiemThu() ? "" : "none"; }
+veCheDoKiemThu();
 $("#cd-gop-tm").checked = batGopTM();
 $("#cd-gop-tm").onchange = e => { localStorage.gopThongMinh = e.target.checked?"1":"0"; veGhiChuHeSo(); };
 $("#cd-model-chon").value = modelChon;
