@@ -16,6 +16,7 @@ const CHE_MA = 35;          // o che quanh moi ma = 35 don vi = 1,4 lan canh ma
 const PX_DV = 2;            // px moi don vi trong anh nan
 const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan
 const SO_MA = 6;            // khay dan 6 ma ID 0-5 (timMa da loc bo ID > 5)
+const MA_TOI_THIEU = 4;     // du 4 ma la chup duoc; duoi 4 thi nut xam
 // Vung dem: hinh chu nhat noi cac tam ma, thut vao LE_DEM moi phia.
 function vungDem(tam){
   const v=Object.values(tam); if(v.length<3) return null;
@@ -32,7 +33,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false;
-const PHIEN_BAN = "1.1";
+const PHIEN_BAN = "1.1.1";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -70,19 +71,21 @@ function nutChup(bat, chu){
 // Khay xanh = thay du SO_MA ma: thieu ma thi hinh chu nhat noi cac tam co lai, vung dem nho di,
 // nen so dem giua cac lan chup khong so sanh duoc voi nhau nua.
 function veKiem(n){
-  const dat=(id,ok,chu)=>{ const e=$(id); e.className="o "+(ok?"o-ok":"o-loi"); e.textContent=chu; };
+  const dat=(id,kieu,chu)=>{ const e=$(id); e.className="o o-"+kieu; e.textContent=chu; };
   const coCam=!!stream;
-  dat("#o-cam", coCam, coCam ? "Camera ✓" : "Camera ✗ chưa bật — chạm vào hình");
+  dat("#o-cam", coCam?"ok":"loi", coCam ? "Camera ✓" : "Camera ✗ chưa bật — chạm vào hình");
   let khayOk=false;
-  if(!coCam)        dat("#o-khay", false, "Khay ✗ chưa có hình");
-  else if(n>=SO_MA){ khayOk=true; dat("#o-khay", true, `Khay ✓ ${n}/${SO_MA} mã`); }
-  else if(n>=3)     dat("#o-khay", false, `Khay ✗ ${n}/${SO_MA} mã — nhích điện thoại`);
-  else              dat("#o-khay", false, `Khay ✗ ${n}/${SO_MA} mã — chỉnh lại điện thoại`);
+  if(!coCam)                 dat("#o-khay","loi", "Khay ✗ chưa có hình");
+  else if(n>=SO_MA){ khayOk=true; dat("#o-khay","ok", `Khay ✓ ${n}/${SO_MA} mã`); }
+  else if(n>=MA_TOI_THIEU){ khayOk=true;
+    dat("#o-khay","canh", `Khay ⚠ ${n}/${SO_MA} mã — vẫn chụp được`); }
+  else if(n>=3)              dat("#o-khay","loi", `Khay ✗ ${n}/${SO_MA} mã — nhích điện thoại`);
+  else                       dat("#o-khay","loi", `Khay ✗ ${n}/${SO_MA} mã — chỉnh lại điện thoại`);
   const coModel=!!session;
-  dat("#o-model", coModel, coModel ? `Model ✓ ${modelVer||"sẵn sàng"}` : "Model ✗ đang cập nhật — vẫn chụp được, sẽ không ra số");
+  dat("#o-model", coModel?"ok":"loi", coModel ? `Model ✓ ${modelVer||"sẵn sàng"}` : "Model ✗ đang cập nhật — vẫn chụp được, sẽ không ra số");
   if(dangChup) return;
   if(!coCam)       nutChup(false, "Camera chưa bật");
-  else if(!khayOk) nutChup(false, `Cần đủ ${SO_MA} mã mới chụp được`);
+  else if(!khayOk) nutChup(false, `Cần ít nhất ${MA_TOI_THIEU} mã mới chụp được`);
   else             nutChup(true, coModel ? "Chụp" : "Chụp — sẽ không ra số");
 }
 // Nhuong mot nhip cho trinh duyet ve lai. requestAnimationFrame KHONG chay khi tab an
@@ -183,9 +186,10 @@ async function vongKiemTra(){
           capNhatKhungXem();
           const tam=timMa(c), n=tam.size;
           veVungDem(tam, c.width, c.height);
-          if(n>=SO_MA)  trangThai(`Thấy ${n}/${SO_MA} mã ✓`, ghiChuModel(), "ok");
-          else if(n>=3) trangThai(`Thấy ${n}/${SO_MA} mã — nhích điện thoại`, ghiChuModel(), "canh");
-          else          trangThai("Không thấy khay — chỉnh lại điện thoại", ghiChuModel(), "loi");
+          if(n>=SO_MA)              trangThai(`Thấy ${n}/${SO_MA} mã ✓`, ghiChuModel(), "ok");
+          else if(n>=MA_TOI_THIEU)  trangThai(`Thấy ${n}/${SO_MA} mã — vẫn chụp được`, ghiChuModel(), "canh");
+          else if(n>=3)             trangThai(`Thấy ${n}/${SO_MA} mã — nhích điện thoại`, ghiChuModel(), "loi");
+          else                      trangThai("Không thấy khay — chỉnh lại điện thoại", ghiChuModel(), "loi");
           veKiem(n);
         }
       } catch(e){ trangThai("Lỗi: "+(e&&e.message||e), "Chạm vào hình để thử lại", "loi"); }
@@ -402,9 +406,11 @@ async function demKhay(soKhung){
     // 2. tim khay
     await B.batDau(1); den=2;
     const thay=[]; let maToiDa=0;
-    for(const c of khung){ const k=timKhay(c); maToiDa=Math.max(maToiDa,k.tam.size); if(k.tam.size>=3) thay.push(k); }
-    if(!thay.length){ await B.loi(1, `chỉ thấy ${maToiDa} mã`);
-      return raKetQua({loi:"Không thấy khay — chỉnh lại điện thoại", den:2}); }
+    // chi nhan khung du MA_TOI_THIEU ma, dung nguong voi cua nut: khung it ma hon co vung dem
+    // nho hon, tron vao trung vi se lam lech so.
+    for(const c of khung){ const k=timKhay(c); maToiDa=Math.max(maToiDa,k.tam.size); if(k.tam.size>=MA_TOI_THIEU) thay.push(k); }
+    if(!thay.length){ await B.loi(1, `chỉ thấy ${maToiDa}/${SO_MA} mã`);
+      return raKetQua({loi:`Chỉ thấy ${maToiDa}/${SO_MA} mã — chỉnh lại điện thoại`, den:2}); }
     await B.xong(1, `${maToiDa}/${SO_MA} mã`);
 
     // 3. nan anh
@@ -527,6 +533,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 

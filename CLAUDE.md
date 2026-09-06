@@ -64,6 +64,9 @@ Không thêm bước, không thêm nút vào luồng này. Thông số kỹ thu�
 - **Không nuốt lỗi.** `vongKiemTra` và `demKhay` đều bọc try/catch và đẩy `Lỗi: …` ra màn hình.
 - `nhuong()` chạy đua `requestAnimationFrame` với `setTimeout(50)`: rAF **không chạy khi tab ẩn
   hoặc màn hình tắt**, dùng rAF trần sẽ treo cứng cả luồng chụp.
-- 3 ô kiểm `veKiem(n)`: Camera / Khay / Model. Nút chỉ sáng khi Camera và Khay xanh.
-  **Khay xanh = đủ 6 mã** — thiếu mã thì vùng đếm co lại, số giữa các lần chụp hết so sánh được.
+- 3 ô kiểm `veKiem(n)`: Camera / Khay / Model. Ngưỡng mã (`MA_TOI_THIEU = 4`):
+  6/6 xanh, 4–5 vàng "vẫn chụp được", dưới 4 đỏ và nút xám. `demKhay` cũng chỉ nhận
+  khung ≥ 4 mã — khung ít mã hơn có vùng đếm nhỏ hơn, trộn vào trung vị sẽ làm lệch số.
+  Lưu ý: chụp ở 4–5 mã thì vùng đếm nhỏ hơn lúc đủ 6 mã, **số giữa các lần chụp không
+  so sánh trực tiếp được**. Muốn số ổn định thì phải thấy đủ 6 mã.
 - Thanh 4 bước `moBuoc()`: mỗi bước hiện ít nhất 300 ms. Kết quả ghi "Xong 4/4" / "Dừng ở bước n/4".
