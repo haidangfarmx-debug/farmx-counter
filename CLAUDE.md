@@ -84,3 +84,14 @@ Không thêm bước, không thêm nút vào luồng này. Thông số kỹ thu�
 Nhắc **một lần cho mỗi lô** (cờ `daNhacLo`, đặt lại khi xong lô hoặc hủy lô), không nhắc lại
 sau mỗi lần "Chụp tiếp" — nhắc mọi lần vào màn Đếm sẽ thành phiền.
 Tắt được ở Cài đặt > "Nhắc trước khi chụp" (`localStorage.nhac`, mặc định bật).
+
+## Gộp cụm sau NMS (`gopCum`)
+NMS chỉ bỏ khung **chồng nhau nhiều**. Hai khung tách rời cùng nằm trên một con (đầu và đuôi)
+có IoU nhỏ nên NMS không dọn được — `gopCum()` mới dọn được.
+- Hai khung có tâm cách nhau < `heSoGop × chiều dài trung vị` thì coi là một con, giữ khung điểm cao hơn.
+- "Chiều dài" = cạnh dài của khung. Trung vị **ước từ chính lô khung của ảnh đó**, nên tự thích nghi
+  với cỡ con giống và độ phóng đại của ảnh nắn — không phải chỉnh khi đổi loại con.
+- Duyệt theo điểm giảm dần, giữ khung nếu nó không nằm trong ngưỡng của khung đã giữ. Nghĩa là
+  một chuỗi khung sát nhau sẽ gộp hết về một.
+- Hệ số mặc định 0,8, chỉnh trong Cài đặt > Nâng cao (`localStorage.heSoGop`, chặn ngoài khoảng 0–10).
+- Màn kết quả hiện "Trước gộp X · sau gộp Y (hệ số Z)" chữ nhỏ xám dưới ảnh.

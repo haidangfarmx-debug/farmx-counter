@@ -91,6 +91,7 @@ img.kq{width:100%;border-radius:14px;display:block}
 .buoc li.loi i{border:0;background:var(--loi);position:relative}
 .buoc li.loi i::after{content:"✗";position:absolute;inset:0;color:#fff;font-size:15px;line-height:22px;text-align:center}
 .kq-buoc{font-size:16px;font-weight:700;color:var(--phu);margin-top:4px}
+.kq-gop{font-size:13px;color:var(--phu);margin-top:6px;text-align:center}
 .kq-buoc.ok{color:var(--ok)}.kq-buoc.loi{color:var(--loi)}
 .chup-vung{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px}
 .nut-tron{width:92px;height:92px;border-radius:50%;padding:0;border:4px solid var(--chu);background:transparent;display:grid;place-items:center}
@@ -159,6 +160,7 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
   <p class="kq-loi" id="kq-loi" style="display:none"></p>
   <p class="phu" id="kq-phu"></p>
   <img class="kq" id="anh-kq" alt="">
+  <p class="kq-gop" id="kq-gop"></p>
   <div class="doi-nut">
     <button class="nut" id="chup-lai">Chụp tiếp</button>
     <button class="nut ok" id="them-khay">Lưu vào lô</button>
@@ -197,6 +199,8 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
     <div class="hang"><span>Model đếm</span><b id="cd-model">chưa tải</b></div>
     <div class="hang"><span>Camera</span><b id="cd-cam">chưa bật</b></div>
     <div class="hang"><span>Lần chụp gần nhất</span><b id="cd-lan">—</b></div>
+    <div class="hang"><span>Hệ số gộp cụm</span><b><input type="number" id="cd-he-so" min="0.1" max="3" step="0.05" style="width:92px;margin:0;padding:8px;text-align:right"></b></div>
+    <p class="phu">Hai khung có tâm gần nhau hơn hệ số × chiều dài trung vị thì gộp làm một con. Cao hơn = gộp mạnh hơn.</p>
     <p class="phu" style="margin-top:10px">Khay được nắn tự động trong từng tấm ảnh, không cần hiệu chuẩn.</p>
   </details>
 </section>

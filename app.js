@@ -17,6 +17,8 @@ const CHE_MA = 35;          // o che quanh moi ma = 35 don vi = 1,4 lan canh ma
 const PX_DV = 2;            // px moi don vi trong anh nan
 const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan
 const SO_MA = 6;            // khay dan 6 ma ID 0-5 (timMa da loc bo ID > 5)
+const HE_SO_GOP_MD = 0.8;   // he so gop cum mac dinh (chinh duoc trong Cai dat > Nang cao)
+let heSoGop = (()=>{ const v=parseFloat(localStorage.heSoGop); return (v>0 && v<10) ? v : HE_SO_GOP_MD; })();
 const MA_TOI_THIEU = 4;     // du 4 ma la chup duoc; duoi 4 thi nut xam
 // Vung dem: hinh chu nhat noi cac tam ma, thut vao LE_DEM moi phia.
 function vungDem(tam){
@@ -34,7 +36,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
-const PHIEN_BAN = "1.2.2";
+const PHIEN_BAN = "1.3";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -393,6 +395,28 @@ async function demYolo(canvas, imgsz=1280, conf=0.25, iou=0.5){
   return keep;
 }
 function iouBox(a,b){ const x1=Math.max(a[0],b[0]),y1=Math.max(a[1],b[1]),x2=Math.min(a[2],b[2]),y2=Math.min(a[3],b[3]); const i=Math.max(0,x2-x1)*Math.max(0,y2-y1); const u=(a[2]-a[0])*(a[3]-a[1])+(b[2]-b[0])*(b[3]-b[1])-i; return u>0?i/u:0; }
+// Gop cum sau NMS: hai khung co tam cach nhau < heSo x chieu dai trung vi thi coi la MOT con,
+// giu khung diem cao hon. "Chieu dai" = canh dai cua khung; trung vi uoc tu chinh lo khung nay
+// nen tu thich nghi voi co con giong va do phong dai cua anh nan.
+// NMS chi bo khung CHONG NHAU nhieu; hai khung tach roi cung nam tren mot con (dau va duoi)
+// thi IoU nho, NMS khong dong duoc — buoc nay moi don duoc.
+function gopCum(boxes, heSo){
+  if(boxes.length<2) return boxes.slice();
+  const dai=boxes.map(b=>Math.max(b[2]-b[0], b[3]-b[1])).sort((a,b)=>a-b);
+  const tv=dai[Math.floor(dai.length/2)];
+  if(!(tv>0)) return boxes.slice();
+  const n2=(heSo*tv)**2;
+  const sx=boxes.slice().sort((a,b)=>b[4]-a[4]);   // diem cao xet truoc -> khung giu lai la khung diem cao
+  const giu=[];
+  for(const b of sx){
+    const cx=(b[0]+b[2])/2, cy=(b[1]+b[3])/2;
+    let trung=false;
+    for(const k of giu){ const dx=cx-(k[0]+k[2])/2, dy=cy-(k[1]+k[3])/2;
+      if(dx*dx+dy*dy < n2){ trung=true; break; } }
+    if(!trung) giu.push(b);
+  }
+  return giu;
+}
 function veBox(canvas,boxes){ const g=canvas.getContext("2d"); g.lineWidth=2; g.strokeStyle="#22c55e"; boxes.forEach(b=>g.strokeRect(b[0],b[1],b[2]-b[0],b[3]-b[1])); return canvas; }
 
 // ---- bam nut: thanh 4 buoc chay tuan tu, buoc nao xong tick ngay ----
@@ -435,14 +459,21 @@ async function demKhay(soKhung){
 
     // 4. dem
     await B.batDau(3); den=4;
-    const ketQua=[]; let anhCuoi=nan[nan.length-1].canvas;
-    if(session){ for(const r of nan){ const bx=await demYolo(r.canvas); ketQua.push(bx.length); anhCuoi=veBox(r.canvas,bx); } }
-    let so=null; if(ketQua.length){ ketQua.sort((a,b)=>a-b); so=ketQua[Math.floor(ketQua.length/2)]; }
+    const ketQua=[], truocGop=[]; let anhCuoi=nan[nan.length-1].canvas;
+    if(session){ for(const r of nan){
+      const bx=await demYolo(r.canvas);
+      const gop=gopCum(bx, heSoGop);
+      truocGop.push(bx.length); ketQua.push(gop.length);
+      anhCuoi=veBox(r.canvas, gop);
+    } }
+    const tv=a=>{ const x=a.slice().sort((p,q)=>p-q); return x[Math.floor(x.length/2)]; };
+    let so=null, soTruoc=null;
+    if(ketQua.length){ so=tv(ketQua); soTruoc=tv(truocGop); }
     if(session) await B.xong(3, `${ketQua.join(", ")}`);
     else await B.loi(3, "chưa có model");
     const cuoi=nan[nan.length-1];
-    khayVua={ so, anh:anhCuoi.toDataURL("image/jpeg",0.8), loai:loaiCon, soMa:cuoi.soMa, khung:ketQua };
-    raKetQua({so, soMa:cuoi.soMa, vung:cuoi.vung, saiSo:cuoi.saiSo, soKhung:khung.length, den:session?4:3});
+    khayVua={ so, anh:anhCuoi.toDataURL("image/jpeg",0.8), loai:loaiCon, soMa:cuoi.soMa, khung:ketQua, khungTruoc:truocGop };
+    raKetQua({so, soTruoc, soMa:cuoi.soMa, vung:cuoi.vung, saiSo:cuoi.saiSo, soKhung:khung.length, den:session?4:3});
   } catch(e){
     const m = (e && e.message) || String(e);
     await B.loi(Math.max(0,den-1), m);
@@ -462,7 +493,7 @@ function raKetQua(r){
   if(r.loi){
     db.className="kq-buoc loi"; db.textContent=`Dừng ở bước ${den}/4`;
     soEl.style.display="none"; loiEl.style.display=""; loiEl.textContent=r.loi;
-    phuEl.textContent=""; anh.removeAttribute("src"); anh.style.display="none";
+    phuEl.textContent=""; $("#kq-gop").textContent=""; anh.removeAttribute("src"); anh.style.display="none";
     luu.style.display="none"; tiep.textContent="Chụp lại";
   } else {
     const heto = r.so!==null;
@@ -473,6 +504,9 @@ function raKetQua(r){
     phuEl.textContent = heto ? `Trung vị ${khayVua.khung.length}/${r.soKhung} khung · thấy ${r.soMa} mã`
                              : "Model đang cập nhật — đã nắn khay, chưa ra số";
     anh.src=khayVua.anh; anh.style.display="";
+    $("#kq-gop").textContent = (heto && r.soTruoc!=null)
+      ? `Trước gộp ${r.soTruoc.toLocaleString("vi")} · sau gộp ${r.so.toLocaleString("vi")} (hệ số ${heSoGop})`
+      : "";
     luu.style.display=""; luu.disabled=!heto; tiep.textContent="Chụp tiếp";
     const e=$("#cd-lan");
     if(e) e.textContent=`${r.soMa} mã · vùng đếm ${Math.round(r.vung.w)}×${Math.round(r.vung.h)} đv · sai số ${r.saiSo.rms} px`;
@@ -533,6 +567,11 @@ function epVuong(p, M){
 }
 // ---- cai dat ----
 function veCaiDat(){ $("#cd-pb").textContent=PHIEN_BAN; capNhatLoai(); }
+$("#cd-he-so").value = heSoGop;
+$("#cd-he-so").onchange = e => {
+  const v=parseFloat(e.target.value);
+  if(v>0 && v<10){ heSoGop=v; localStorage.heSoGop=v; } else { e.target.value=heSoGop; }
+};
 $("#cd-nhac").checked = batNhac(); $("#cd-nhac").onchange=e=>localStorage.nhac=e.target.checked?"1":"0";
 $("#cd-gop").checked = localStorage.gopAnh==="1"; $("#cd-gop").onchange=e=>localStorage.gopAnh=e.target.checked?"1":"0";
 $("#cd-model-tai").onclick=()=>{ tb("Đang kiểm tra…"); taiModel(); };
@@ -547,6 +586,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 
