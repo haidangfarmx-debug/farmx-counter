@@ -14,9 +14,10 @@
 > - chế độ công nhân
 > - "Đếm từ ảnh" — chưa làm
 >
-> **Còn lệch giữa nguyên tắc và code:** nguyên tắc ghi "tự lưu" nhưng màn kết quả hiện vẫn có
-> nút **[Lưu vào lô]** phải bấm. Chưa đổi vì tự lưu sẽ nhét cả những tấm chụp hỏng vào lô mà
-> không còn đường bỏ — cần Hải Đăng chốt trước.
+> **Tự lưu (v2.1):** chụp xong là lưu vào lô ngay, không bấm gì. Nút nhỏ **[Bỏ tấm này]** hiện
+> **5 giây** rồi tự ẩn; hết 5 giây hoặc rời màn kết quả là chốt luôn, không bỏ được nữa.
+> Bỏ tấm đầu tiên của lô mới thì xoá luôn cả lô. **Chế độ kiểm thử KHÔNG tự lưu** — còn phải
+> sửa tay trước khi chốt số nên vẫn giữ nút [Lưu vào lô].
 
 # FarmX Counter — web-app đếm con giống (Tray v1)
 

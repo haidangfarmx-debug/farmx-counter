@@ -111,6 +111,7 @@ input,textarea{width:100%;padding:14px;border:2px solid #CBD5DD;border-radius:12
 @keyframes xoay{to{transform:rotate(360deg)}}
 .chup-chu{font-size:17px;font-weight:600;color:var(--phu)}
 .doi-nut{display:flex;gap:10px;margin-top:16px}
+.nut.nho{padding:12px;font-size:16px;margin-top:10px;background:#fff;color:var(--phu);border:2px solid #CBD5DD}
 .doi-nut .nut{flex:1;margin:0}
 .kq-loi{font-size:26px;font-weight:700;color:var(--loi);line-height:1.25;margin:18px 0 6px}
 body.che-nav nav.thanh{display:none}
@@ -175,10 +176,9 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
     <button class="nut phu2" id="xoa-doi">Xóa hết nghi đôi</button>
     <button class="nut phu2" id="thu-nho" style="display:none">Thu vừa khung</button>
   </div>
-  <div class="doi-nut">
-    <button class="nut" id="chup-lai">Chụp tiếp</button>
-    <button class="nut ok" id="them-khay">Lưu vào lô</button>
-  </div>
+  <button class="nut ok" id="chup-lai">Chụp tiếp</button>
+  <button class="nut nho" id="bo-khay" style="display:none">Bỏ tấm này</button>
+  <button class="nut ok" id="them-khay" style="display:none">Lưu vào lô</button>
 </section>
 
 <section class="man" id="man-lo">

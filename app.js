@@ -69,8 +69,9 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
+let luuVua = null;   // { moiTao } — lan tu luu gan nhat, de con bo lai duoc
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "2.0";
+const PHIEN_BAN = "2.1";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -78,7 +79,8 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => hien(b.da
 function hien(m){
   document.querySelectorAll(".man").forEach(s=>s.classList.toggle("hien", s.id===m));
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("dang", b.dataset.m===m));
-  document.body.classList.toggle("che-nav", m==="man-loai");   // buoc 1 khong co thanh dieu huong
+  document.body.classList.toggle("che-nav", m==="man-loai");
+  if(m!=="man-kq") anBoKhay();   // roi man ket qua = chot luon, khong bo duoc nua   // buoc 1 khong co thanh dieu huong
   if(m==="man-ls") veLichSu(); if(m==="man-lo") veLo(); if(m==="man-cd") veCaiDat();
   if(m==="man-dem"){ batCamera(); nhacNho(); } else anNhac();
 }
@@ -891,7 +893,7 @@ function raKetQua(r){
     soEl.style.display="none"; loiEl.style.display=""; loiEl.textContent=r.loi;
     phuEl.textContent=""; $("#kq-gop").textContent=""; $("#kq-sua").textContent=""; $("#kq-doi").textContent=""; chi.textContent="";
     anh.style.display="none"; ht.style.display="none"; suaTay=null;
-    luu.style.display="none"; tiep.textContent="Chụp lại";
+    luu.style.display="none"; anBoKhay(); tiep.textContent="Chụp lại";
   } else {
     const heto = r.so!==null;
     db.className="kq-buoc "+(heto?"ok":"loi");
@@ -911,7 +913,13 @@ function raKetQua(r){
     $("#kq-gop").textContent = (heto && kt && r.soTruoc!=null)
       ? `Trước gộp ${r.soTruoc.toLocaleString("vi")} · sau gộp ${r.so.toLocaleString("vi")} · ${batGopTM()?"gộp thông minh":"hệ số "+heSoGop}`
       : "";
-    luu.style.display=""; luu.disabled=!heto; tiep.textContent="Chụp tiếp";
+    tiep.textContent="Chụp tiếp";
+    luu.style.display = (heto && kt) ? "" : "none";   // nut Luu chi con trong che do kiem thu
+    luu.disabled = !heto;
+    if(heto && !kt && tuLuuKhay()){                   // luong thuong: luu ngay, cho bo trong 5 giay
+      hienBoKhay();
+      phuEl.textContent = `Đã lưu vào lô · ${phuEl.textContent}`;
+    } else anBoKhay();
     const e=$("#cd-lan");
     if(e) e.textContent=`${r.soMa} mã · vùng đếm ${Math.round(r.vung.w)}×${Math.round(r.vung.h)} đv · sai số ${r.saiSo.rms} px`;
   }
@@ -919,17 +927,46 @@ function raKetQua(r){
   hien("man-kq");
 }
 $("#chup-lai").onclick=()=>hien("man-dem");
-$("#them-khay").onclick=()=>{
-  if(!suaTay) return;
-  if(!loHienTai) loHienTai={ id:crypto.randomUUID(), thoi_gian:new Date().toISOString(), loai_con:loaiCon,
-                             khay:[], khayMay:[], anh:[], khach:"", ghi_chu:"" };
+// Luong thuong: chup xong TU LUU ngay, khong bat bam gi. Nut nho [Bo tam nay] hien 5 giay
+// roi tu an — khong bam gi nghia la da luu. Che do kiem thu thi KHONG tu luu, vi con phai
+// sua tay truoc khi chot so.
+function tuLuuKhay(){
+  if(!suaTay) return false;
+  const moiTao = !loHienTai;
+  if(moiTao) loHienTai={ id:crypto.randomUUID(), thoi_gian:new Date().toISOString(), loai_con:loaiCon,
+                         khay:[], khayMay:[], anh:[], khach:"", ghi_chu:"" };
   loHienTai.khayMay ||= [];                      // lo nhap cu tu ban truoc chua co truong nay
-  const may=suaTay.soMay, chot=soChot();
-  loHienTai.khay.push(chot);                     // so CHOT dung de cong tong lo
-  loHienTai.khayMay.push(may);                   // so MAY dem, giu de doi chieu va train sau
-  // Anh gop la anh nan SACH, khong ve khung sua tay len — de con dung lam du lieu train.
+  loHienTai.khay.push(soChot());                 // so CHOT dung de cong tong lo
+  loHienTai.khayMay.push(suaTay.soMay);          // so MAY dem, giu de doi chieu va train sau
+  // Anh gop la anh nan SACH, khong ve khung len — de con dung lam du lieu train.
   loHienTai.anh.push(suaTay.anhNan.toDataURL("image/jpeg",0.85));
   luuNhap();
+  luuVua = { moiTao };
+  return true;
+}
+function hienBoKhay(){
+  const b=$("#bo-khay"); b.style.display="";
+  clearTimeout(hienBoKhay.t); hienBoKhay.t=setTimeout(anBoKhay, 5000);
+}
+function anBoKhay(){
+  clearTimeout(hienBoKhay.t);
+  const b=$("#bo-khay"); if(b) b.style.display="none";
+  luuVua=null;                                   // het 5 giay thi khong bo duoc nua
+}
+$("#bo-khay").onclick=()=>{
+  if(!luuVua || !loHienTai){ anBoKhay(); return; }
+  loHienTai.khay.pop(); (loHienTai.khayMay||[]).pop(); loHienTai.anh.pop();
+  if(luuVua.moiTao || !loHienTai.khay.length){ loHienTai=null; localStorage.removeItem("loNhap"); }
+  else luuNhap();
+  anBoKhay();
+  tb("Đã bỏ tấm này, không tính vào lô.");
+  hien("man-dem");
+};
+// Che do kiem thu: van bam tay de con sua truoc khi chot.
+$("#them-khay").onclick=()=>{
+  if(!tuLuuKhay()) return;
+  const may=suaTay.soMay, chot=soChot();
+  anBoKhay();
   tb(may===chot ? "Đã thêm khay vào lô." : `Đã thêm khay (sửa tay ${chot-may>0?"+":"−"}${Math.abs(chot-may)}).`);
   hien("man-dem");
 };
