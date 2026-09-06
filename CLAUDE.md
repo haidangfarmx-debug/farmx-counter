@@ -149,3 +149,20 @@ Chạm vào ô Model để tải lại khi hỏng.
 - `CHAM_TOI_THIEU = 24`: vùng chạm quanh khung tối thiểu 24 px màn hình, quy về đơn vị ảnh bằng
   `24 / tyLeManHinh()`. Chọn khung có **tâm gần điểm chạm nhất** trong số khung nằm trong vùng.
 - Phân biệt chạm với kéo: `di < 8 px` và `< 600 ms` mới tính là chạm.
+
+## Gộp thông minh (v1.9) — thay hệ số cố định
+`gopThongMinh(boxes, canvas)` chạy sau NMS, mặc định bật (`localStorage.gopThongMinh`).
+Với mỗi cặp tâm cách nhau < `HE_SO_XET = 2` × chiều dài trung vị, lấy `SO_DIEM_XET = 20` điểm
+dọc đoạn nối hai tâm **trên ảnh nắn** rồi quyết định bằng ảnh thật, không bằng khoảng cách:
+- `nenAnh()` lấy **trung vị** độ sáng toàn ảnh + MAD làm ngưỡng "khác nền rõ". Dùng trung vị chứ
+  không dùng trung bình: con giống chiếm ít diện tích nhưng rất sáng/tối, trung bình bị kéo lệch.
+- Gộp khi **cả hai** vế đúng: ≥ `TY_LE_LIEN = 0.8` số điểm khác nền, **và** không có `DOAN_NEN = 2`
+  điểm nền liên tiếp ở khoảng giữa (bỏ 20% mỗi đầu vì rìa thân hay lem sang nền).
+  Chỉ dùng tỉ lệ 80% là chưa đủ: hai con cách nhau 12 px trên đoạn 72 px chỉ chiếm 17% số điểm,
+  vẫn lọt qua ngưỡng — phải bắt **đoạn** nền liên tiếp mới chặn được.
+- Xét 3 đường song song (giữa và lệch ±0,45 bề ngang con); chỉ cần một đường đi trọn trong thân
+  là kết luận cùng một thân. Con giống hay cong, đoạn thẳng nối hai tâm sẽ cắt qua phía lõm.
+- **Giới hạn đã biết**: con cong khoảng 90° vẫn bị đếm đôi — ba đường thẳng không bám được cung.
+  Đây là việc của khung cam "nghi đếm đôi" và sửa tay.
+`gopCum()` với hệ số cố định (mặc định **0,8** cho mọi model) giữ làm dự phòng, dùng khi tắt
+gộp thông minh trong Cài đặt > Nâng cao.

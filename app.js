@@ -22,7 +22,7 @@ const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan
 const SO_MA = 6;            // khay dan 6 ma ID 0-5 (timMa da loc bo ID > 5)
 // He so gop cum mac dinh RIENG cho tung model — moi model cho ra khung to nho khac nhau
 // nen nguong gop phai khac. Nguoi dung chinh tay thi luu rieng theo model.
-const HE_SO_MD = { dem_v01: 1.2, dem_v0: 0.8 };
+const HE_SO_MD = { dem_v01: 0.8, dem_v0: 0.8 };   // chi con la du phong khi tat gop thong minh
 const heSoMacDinh = m => HE_SO_MD[m] ?? 0.8;
 function docHeSo(){
   let m={}; try{ m=JSON.parse(localStorage.heSoGopTheoModel||"{}")||{}; }catch(e){}
@@ -34,6 +34,12 @@ function luuHeSo(v){
   m[modelChon]=v; localStorage.heSoGopTheoModel=JSON.stringify(m);
 }
 let heSoGop = docHeSo();
+// Gop thong minh: xet anh that giua hai tam de biet mot than hay hai con. Mac dinh bat.
+const batGopTM = () => (localStorage.gopThongMinh ?? "1") === "1";
+const SO_DIEM_XET = 20;    // so diem lay doc doan noi hai tam
+const TY_LE_LIEN  = 0.8;   // >= 80% diem khac nen ro -> cung mot than
+const HE_SO_XET   = 2;     // chi xet cap co tam cach nhau < 2 x chieu dai trung vi
+const DOAN_NEN    = 2;     // >= 2 diem nen lien tiep o giua = co khe ho -> hai con
 let loiModel = null, epDung = null;      // thong bao loi nap model, va execution provider dang dung
 let tienDoModel = null, dangTaiModel = false;
 const HET_GIO_MODEL = 90000;             // 90 s
@@ -61,7 +67,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "1.8.1";
+const PHIEN_BAN = "1.9";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -490,6 +496,79 @@ async function demYolo(canvas, imgsz=1280, conf=0.25, iou=0.5){
   return keep;
 }
 function iouBox(a,b){ const x1=Math.max(a[0],b[0]),y1=Math.max(a[1],b[1]),x2=Math.min(a[2],b[2]),y2=Math.min(a[3],b[3]); const i=Math.max(0,x2-x1)*Math.max(0,y2-y1); const u=(a[2]-a[0])*(a[3]-a[1])+(b[2]-b[0])*(b[3]-b[1])-i; return u>0?i/u:0; }
+// Mau nen cua anh nan: trung vi do sang toan anh, kem MAD de biet the nao la "khac nen ro".
+// Dung trung vi + MAD chu khong dung trung binh + do lech chuan: con giong chiem it dien tich
+// nhung rat sang/toi, trung binh se bi keo lech.
+function nenAnh(canvas){
+  const d=anhTu(canvas).data, n=d.length/4;
+  const buoc=Math.max(1, Math.floor(n/20000)), ds=[];
+  for(let i=0;i<n;i+=buoc){ const o=i*4; ds.push(0.299*d[o]+0.587*d[o+1]+0.114*d[o+2]); }
+  ds.sort((a,b)=>a-b);
+  const nen=ds[Math.floor(ds.length/2)];
+  const lech=ds.map(v=>Math.abs(v-nen)).sort((a,b)=>a-b);
+  const mad=lech[Math.floor(lech.length/2)];
+  return { nen, nguong: Math.max(10, 3*mad) };
+}
+// Gop THONG MINH: voi moi cap tam cach nhau < HE_SO_XET x chieu dai trung vi, lay SO_DIEM_XET
+// diem doc doan noi hai tam tren anh nan. Neu >= TY_LE_LIEN so diem khac mau nen ro -> hai khung
+// nam tren CUNG MOT THAN -> gop. Neu giua co doan nen -> hai con roi nhau -> giu ca hai.
+// Khac han he so co dinh: khoang cach chi de loc so bo, quyet dinh cuoi dua vao anh that.
+function gopThongMinh(boxes, canvas){
+  if(boxes.length<2) return boxes.slice();
+  const dai=boxes.map(b=>Math.max(b[2]-b[0], b[3]-b[1])).sort((a,b)=>a-b);
+  const tv=dai[Math.floor(dai.length/2)];
+  if(!(tv>0)) return boxes.slice();
+  const n2=(HE_SO_XET*tv)**2;
+  const {nen,nguong}=nenAnh(canvas);
+  const img=anhTu(canvas), W=img.width, H=img.height, d=img.data;
+  const sang=(x,y)=>{
+    const xi=Math.min(W-1,Math.max(0,Math.round(x))), yi=Math.min(H-1,Math.max(0,Math.round(y)));
+    const o=(yi*W+xi)*4; return 0.299*d[o]+0.587*d[o+1]+0.114*d[o+2];
+  };
+  // Xet MOT duong: du diem khac nen, va khong co doan nen lien tiep o giua.
+  const xetDuong=(ax,ay,bx,by,lx,ly)=>{
+    const laNen=[]; let khac=0;
+    for(let i=0;i<SO_DIEM_XET;i++){
+      const t=(i+0.5)/SO_DIEM_XET;
+      const n = Math.abs(sang(ax+(bx-ax)*t+lx, ay+(by-ay)*t+ly)-nen) <= nguong;
+      laNen.push(n); if(!n) khac++;
+    }
+    if(khac/SO_DIEM_XET < TY_LE_LIEN) return false;   // ve 1: >= 80% diem khac nen ro
+    // ve 2: co DOAN nen lien tiep o giua khong. Chi ty le thoi thi chua du — khe ho hep
+    // giua hai con nam sat nhau chiem it diem, van lot qua nguong 80%.
+    // Bo 20% moi dau vi hai dau doan noi la ria than, hay lem sang nen.
+    const d0=Math.floor(SO_DIEM_XET*0.2), d1=Math.ceil(SO_DIEM_XET*0.8);
+    let lienTiep=0;
+    for(let i=d0;i<d1;i++){
+      if(laNen[i]){ if(++lienTiep>=DOAN_NEN) return false; } else lienTiep=0;
+    }
+    return true;
+  };
+  // Con giong hay cong. Doan thang noi hai tam cua mot con cong se cat qua phia lom, gap nen,
+  // roi ket luan nham la hai con. Nen xet them hai duong song song lech sang hai ben mot chut:
+  // chi can MOT duong di tron trong than la du ket luan cung mot than.
+  const cungThan=(A,B)=>{
+    const ax=(A[0]+A[2])/2, ay=(A[1]+A[3])/2, bx=(B[0]+B[2])/2, by=(B[1]+B[3])/2;
+    const dx=bx-ax, dy=by-ay, d=Math.hypot(dx,dy) || 1;
+    const cao=Math.max(2, (Math.min(A[3]-A[1], B[3]-B[1]) || tv/2) * 0.45);
+    const px=-dy/d*cao, py=dx/d*cao;   // vector vuong goc, dai bang 0,45 be ngang con
+    return xetDuong(ax,ay,bx,by,0,0)
+        || xetDuong(ax,ay,bx,by,px,py)
+        || xetDuong(ax,ay,bx,by,-px,-py);
+  };
+  const sx=boxes.slice().sort((a,b)=>b[4]-a[4]);
+  const giu=[];
+  for(const b of sx){
+    const bx=(b[0]+b[2])/2, by=(b[1]+b[3])/2;
+    let trung=false;
+    for(const k of giu){
+      const dx=bx-(k[0]+k[2])/2, dy=by-(k[1]+k[3])/2;
+      if(dx*dx+dy*dy < n2 && cungThan(k,b)){ trung=true; break; }
+    }
+    if(!trung) giu.push(b);
+  }
+  return giu;
+}
 // Gop cum sau NMS: hai khung co tam cach nhau < heSo x chieu dai trung vi thi coi la MOT con,
 // giu khung diem cao hon. "Chieu dai" = canh dai cua khung; trung vi uoc tu chinh lo khung nay
 // nen tu thich nghi voi co con giong va do phong dai cua anh nan.
@@ -557,7 +636,7 @@ async function demKhay(soKhung){
     const ketQua=[], truocGop=[], khungKQ=[];
     if(session){ for(const r of nan){
       const bx=await demYolo(r.canvas);
-      const gop=gopCum(bx, heSoGop);
+      const gop = batGopTM() ? gopThongMinh(bx, r.canvas) : gopCum(bx, heSoGop);
       truocGop.push(bx.length); ketQua.push(gop.length);
       khungKQ.push({canvas:r.canvas, boxes:gop});   // giu canvas SACH, ve khung luc hien
     } }
@@ -799,7 +878,7 @@ function raKetQua(r){
     chi.textContent = heto ? "Chạm vào con để bỏ · chạm chỗ trống để thêm · chụm 2 ngón để phóng to" : "";
     if(!heto){ $("#kq-sua").textContent=""; $("#kq-doi").textContent=""; }
     $("#kq-gop").textContent = (heto && r.soTruoc!=null)
-      ? `Trước gộp ${r.soTruoc.toLocaleString("vi")} · sau gộp ${r.so.toLocaleString("vi")} (hệ số ${heSoGop})`
+      ? `Trước gộp ${r.soTruoc.toLocaleString("vi")} · sau gộp ${r.so.toLocaleString("vi")} · ${batGopTM()?"gộp thông minh":"hệ số "+heSoGop}`
       : "";
     luu.style.display=""; luu.disabled=!heto; tiep.textContent="Chụp tiếp";
     const e=$("#cd-lan");
@@ -879,6 +958,8 @@ function epVuong(p, M){
 }
 // ---- cai dat ----
 function veCaiDat(){ $("#cd-pb").textContent=PHIEN_BAN; capNhatLoai(); }
+$("#cd-gop-tm").checked = batGopTM();
+$("#cd-gop-tm").onchange = e => { localStorage.gopThongMinh = e.target.checked?"1":"0"; veGhiChuHeSo(); };
 $("#cd-model-chon").value = modelChon;
 $("#cd-model-chon").onchange = e => {
   modelChon = MODELS[e.target.value] ? e.target.value : MODEL_MD;
@@ -887,8 +968,9 @@ $("#cd-model-chon").onchange = e => {
   tb(`Đang đổi sang ${modelChon}… (hệ số gộp ${heSoGop})`); taiModel();
 };
 function veGhiChuHeSo(){
-  $("#cd-he-so-ghi").textContent =
-    `Hai khung có tâm gần nhau hơn hệ số × chiều dài trung vị thì gộp làm một con. Cao hơn = gộp mạnh hơn. Mặc định của ${modelChon} là ${heSoMacDinh(modelChon)}.`;
+  $("#cd-he-so-ghi").textContent = batGopTM()
+    ? `Đang dùng gộp thông minh: xét ảnh thật giữa hai tâm để biết một thân hay hai con. Hệ số dưới đây chỉ dùng khi tắt gộp thông minh.`
+    : `Hai khung có tâm gần nhau hơn hệ số × chiều dài trung vị thì gộp làm một con. Cao hơn = gộp mạnh hơn. Mặc định ${heSoMacDinh(modelChon)}.`;
 }
 $("#cd-he-so").value = heSoGop; veGhiChuHeSo();
 $("#cd-he-so").onchange = e => {
@@ -909,6 +991,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 
