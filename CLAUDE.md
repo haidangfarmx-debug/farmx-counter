@@ -95,3 +95,19 @@ có IoU nhỏ nên NMS không dọn được — `gopCum()` mới dọn được
   một chuỗi khung sát nhau sẽ gộp hết về một.
 - Hệ số mặc định 0,8, chỉnh trong Cài đặt > Nâng cao (`localStorage.heSoGop`, chặn ngoài khoảng 0–10).
 - Màn kết quả hiện "Trước gộp X · sau gộp Y (hệ số Z)" chữ nhỏ xám dưới ảnh.
+
+## onnxruntime-web tự host (v1.5)
+`lib/ort/`: `ort.webgpu.min.js` (313 KB) + `ort-wasm-simd-threaded.jsep.mjs` (45 KB) +
+`ort-wasm-simd-threaded.jsep.wasm` (21,3 MB). Bản webgpu dùng chung một file wasm cho cả
+hai EP nên chỉ phải host một file nặng. **Không còn CDN nào trong repo.**
+- `ort.env.wasm.wasmPaths` phải là **URL tuyệt đối** (`new URL("./lib/ort/", document.baseURI).href`).
+  ORT giải wasmPaths tương đối với chính file `ort.webgpu.min.js`, đưa `"./lib/ort/"` vào sẽ thành
+  `/lib/ort/lib/ort/…` rồi 404. Đây đúng là lỗi làm model chết trên máy khác.
+- `numThreads = 1`, `proxy = false`: nhiều máy Android không có SharedArrayBuffer hoặc chặn worker.
+- Thử `["webgpu"]` trước rồi mới `["wasm"]`, **tách riêng từng lần** — truyền cả mảng
+  `["webgpu","wasm"]` thì ORT có thể tự rơi về wasm mà mình vẫn tưởng đang chạy webgpu.
+- `_headers` bật COOP/COEP cho Cloudflare Pages. **Hệ quả: mọi tài nguyên cross-origin từ nay
+  phải có CORP/CORS, thêm lại script từ CDN sẽ bị chặn.**
+- `sw.js` cache-trước cho cả `/model/` và `/lib/ort/` — nếu để rơi vào nhánh mạng-trước thì mỗi
+  lần mở app sẽ tải lại hơn 30 MB.
+- Tốc độ đo được: webgpu ~290 ms/khung, wasm ~1.300–2.900 ms/khung.

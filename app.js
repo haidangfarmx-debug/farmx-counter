@@ -22,6 +22,7 @@ const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan
 const SO_MA = 6;            // khay dan 6 ma ID 0-5 (timMa da loc bo ID > 5)
 const HE_SO_GOP_MD = 0.8;   // he so gop cum mac dinh (chinh duoc trong Cai dat > Nang cao)
 let heSoGop = (()=>{ const v=parseFloat(localStorage.heSoGop); return (v>0 && v<10) ? v : HE_SO_GOP_MD; })();
+let loiModel = null, epDung = null;   // thong bao loi nap model, va execution provider dang dung
 const MA_TOI_THIEU = 4;     // du 4 ma la chup duoc; duoi 4 thi nut xam
 // Vung dem: hinh chu nhat noi cac tam ma, thut vao LE_DEM moi phia.
 function vungDem(tam){
@@ -39,7 +40,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
-const PHIEN_BAN = "1.4";
+const PHIEN_BAN = "1.5";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -99,7 +100,10 @@ function veKiem(n){
   else if(n>=3)              dat("#o-khay","loi", `Khay ✗ ${n}/${SO_MA} mã — nhích điện thoại`);
   else                       dat("#o-khay","loi", `Khay ✗ ${n}/${SO_MA} mã — chỉnh lại điện thoại`);
   const coModel=!!session;
-  dat("#o-model", coModel?"ok":"loi", coModel ? `Model ✓ ${modelVer||"sẵn sàng"}` : "Model ✗ đang cập nhật — vẫn chụp được, sẽ không ra số");
+  dat("#o-model", coModel?"ok":"loi",
+    coModel ? `Model ✓ ${modelVer}${epDung?" · "+epDung:""}`
+            : (loiModel ? `Model ✗ lỗi: ${loiModel}`
+                        : "Model ✗ đang cập nhật — vẫn chụp được, sẽ không ra số"));
   if(dangChup) return;
   if(!coCam)       nutChup(false, "Camera chưa bật");
   else if(!khayOk) nutChup(false, `Cần ít nhất ${MA_TOI_THIEU} mã mới chụp được`);
@@ -373,16 +377,48 @@ function nanTuMa(nho, tam){
 }
 
 // ---- ONNX: YOLO ----
+// Nap onnxruntime-web TU HOST trong lib/ort (khong dung CDN: Android hay bi chan CDN/CORS).
+// numThreads=1 va proxy=false vi nhieu may Android khong co SharedArrayBuffer / chan worker,
+// de mac dinh la nguyen nhan model khong chay tren Chrome Android.
 async function taiModel(){
-  session=null; modelVer=null; $("#tt-model").textContent="đang tải model…"; veKiem(soMaCuoi);
+  session=null; modelVer=null; loiModel=null; epDung=null;
+  $("#tt-model").textContent="đang tải model…"; veKiem(soMaCuoi);
   try{
-    if(!window.ort){ await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
-    ort=window.ort; const r=await fetch(MODELS[modelChon],{cache:"force-cache"}); if(!r.ok) throw 0;
-    session=await ort.InferenceSession.create(await r.arrayBuffer(),{executionProviders:["webgpu","wasm"]});
-    modelVer=modelChon; $("#tt-model").textContent="model "+modelVer; $("#cd-model").textContent=modelVer;
-  }catch(e){ session=null; modelVer=null; $("#tt-model").textContent="chưa có model"; $("#cd-model").textContent="chưa có — sẽ tự tải khi có"; }
-  veKiem(soMaCuoi);   // o kiem Model doi mau ngay, khong cho vong xem truoc
+    if(!window.ort){
+      await new Promise((res,rej)=>{ const t=document.createElement("script");
+        t.src="./lib/ort/ort.webgpu.min.js"; t.onload=res;
+        t.onerror=()=>rej(new Error("không tải được lib/ort/ort.webgpu.min.js"));
+        document.head.appendChild(t); });
+    }
+    ort=window.ort;
+    if(!ort || !ort.InferenceSession) throw new Error("onnxruntime không nạp được");
+    // URL TUYET DOI: ORT giai wasmPaths tuong doi voi chinh file ort.webgpu.min.js,
+    // dua duong dan tuong doi vao se thanh /lib/ort/lib/ort/... roi 404.
+    ort.env.wasm.wasmPaths  = new URL("./lib/ort/", document.baseURI).href;
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.proxy      = false;
+    const r=await fetch(MODELS[modelChon],{cache:"force-cache"});
+    if(!r.ok) throw new Error(`tải model lỗi HTTP ${r.status}`);
+    const buf=await r.arrayBuffer();
+    // Thu webgpu truoc, hong thi roi ve wasm. Thu rieng tung cai de biet CHAC dang chay bang gi;
+    // truyen ca mang ["webgpu","wasm"] thi ORT co the tu roi ve wasm ma minh van tuong la webgpu.
+    try{
+      session=await ort.InferenceSession.create(buf,{executionProviders:["webgpu"]}); epDung="webgpu";
+    }catch(eGpu){
+      session=await ort.InferenceSession.create(buf,{executionProviders:["wasm"]}); epDung="wasm";
+    }
+    modelVer=modelChon;
+    $("#tt-model").textContent="model "+modelVer;
+    $("#cd-model").textContent=`${modelVer} · ${epDung}`;
+  }catch(e){
+    session=null; modelVer=null; epDung=null;
+    loiModel=(e && e.message) || String(e) || "lỗi không rõ";
+    $("#tt-model").textContent="model lỗi";
+    $("#cd-model").textContent="lỗi: "+loiModel;
+  }
+  veKiem(soMaCuoi);
 }
+
 async function demYolo(canvas, imgsz=1280, conf=0.25, iou=0.5){
   // letterbox
   const s=Math.min(imgsz/canvas.width, imgsz/canvas.height), nw=Math.round(canvas.width*s), nh=Math.round(canvas.height*s);
@@ -596,6 +632,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 
