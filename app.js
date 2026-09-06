@@ -6,7 +6,7 @@ const SUPABASE_URL = "https://xofhpbfiuolkcbwbxume.supabase.co";
 const SUPABASE_KEY = "sb_publishable_DeOQ4ZYgl_6Oxth4eYyrbg_EBiJ6unP";
 // Model tu host trong repo. Cung kien truc: YOLO11n, input [1,3,1280,1280], output [1,5,33600].
 // Giu ban cu de doi chieu khi ban moi dem lech.
-const MODELS = { dem_v01: "./model/dem_v01.onnx", dem_v0: "./model/dem_v0.onnx" };
+const MODELS = { dem_v02: "./model/dem_v02.onnx", dem_v01: "./model/dem_v01.onnx", dem_v0: "./model/dem_v0.onnx" };
 const MODEL_MD = "dem_v01";
 let modelChon = MODELS[localStorage.modelChon] ? localStorage.modelChon : MODEL_MD;
 
@@ -22,7 +22,7 @@ const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan
 const SO_MA = 6;            // khay dan 6 ma ID 0-5 (timMa da loc bo ID > 5)
 // He so gop cum mac dinh RIENG cho tung model — moi model cho ra khung to nho khac nhau
 // nen nguong gop phai khac. Nguoi dung chinh tay thi luu rieng theo model.
-const HE_SO_MD = { dem_v01: 0.8, dem_v0: 0.8 };   // chi con la du phong khi tat gop thong minh
+const HE_SO_MD = { dem_v02: 0.8, dem_v01: 0.8, dem_v0: 0.8 };   // chi con la du phong khi tat gop thong minh
 const heSoMacDinh = m => HE_SO_MD[m] ?? 0.8;
 function docHeSo(){
   let m={}; try{ m=JSON.parse(localStorage.heSoGopTheoModel||"{}")||{}; }catch(e){}
@@ -71,7 +71,7 @@ let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session =
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let luuVua = null;   // { moiTao } — lan tu luu gan nhat, de con bo lai duoc
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "2.1";
+const PHIEN_BAN = "2.2";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
