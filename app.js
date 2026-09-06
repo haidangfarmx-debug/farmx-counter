@@ -39,7 +39,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = "pl", stream = null, ort = null, session = null, modelVer = null;
 let nghieng = false, loHienTai = null, khayVua = null;
-const PHIEN_BAN = "0.7";
+const PHIEN_BAN = "0.8";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -77,10 +77,40 @@ function kiemSang(canvas){
   let sum=0,n=0,choi=0; for(let i=0;i<d.length;i+=4*s){ const y=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; sum+=y; n++; if(y>245) choi++; }
   const m=sum/n, c=choi/n; if(m<60) return ["Tối quá","loi"]; if(m>210||c>0.05) return ["Chói / sáng quá","loi"]; return ["Ánh sáng OK","ok"]; }
 
+// Ve vung dem len tren video: khung xanh la + to mo ben ngoai.
+// Canvas #ve co cung kich thuoc khung hinh voi video va cung CSS object-fit:cover,
+// nen trinh duyet ap dung y het phep bien -> khong phai tu tinh toa do hien thi.
+function veVungDem(tam, w, h){
+  const cv=$("#ve"), lop=document.querySelector(".khung .lop"); if(!cv) return;
+  if(cv.width!==w || cv.height!==h){ cv.width=w; cv.height=h; }
+  const g=cv.getContext("2d"); g.clearRect(0,0,w,h);
+  let goc=null;
+  if(VUNG && tam.size>=3){
+    const ids=[...tam.keys()];
+    const H=tinhH(ids.map(i=>[TAM_MA[i][0]*PX_MM, TAM_MA[i][1]*PX_MM]),
+                  ids.map(i=>[tam.get(i)[0], tam.get(i)[1]]));
+    if(H){ const V=VUNG;
+      goc=[[V.x,V.y],[V.x+V.w,V.y],[V.x+V.w,V.y+V.h],[V.x,V.y+V.h]]
+          .map(p=>apH(H,[p[0]*PX_MM, p[1]*PX_MM]));
+      if(goc.some(p=>!isFinite(p[0])||!isFinite(p[1]))) goc=null; }
+  }
+  if(lop) lop.style.display = goc ? "none" : "";   // an khung gach dut khi da co khung that
+  if(!goc) return;
+  const duong=()=>{ g.moveTo(goc[0][0],goc[0][1]); for(let i=1;i<4;i++) g.lineTo(goc[i][0],goc[i][1]); g.closePath(); };
+  g.beginPath(); g.rect(0,0,w,h); duong();          // hai duong bao + evenodd = chi to ben ngoai
+  g.fillStyle="rgba(0,0,0,.45)"; g.fill("evenodd");
+  g.beginPath(); duong();
+  g.strokeStyle="#22c55e"; g.lineWidth=Math.max(3,Math.round(w/240)); g.lineJoin="round"; g.stroke();
+}
+function xoaVungDem(){ const cv=$("#ve"), lop=document.querySelector(".khung .lop");
+  if(cv) cv.getContext("2d").clearRect(0,0,cv.width,cv.height); if(lop) lop.style.display=""; }
+
 async function vongKiemTra(){
   while(stream){ const c=layKhung(); if(c.width){ const [t,k]=kiemSang(c); the("#k-sang",t,k);
-    const n=timMa(c).size; the("#k-ma", n>=3?`Thấy ${n}/6 mã`:`Chỉ ${n} mã`, n>=3?"ok":"canh"); }
+    const tam=timMa(c), n=tam.size; the("#k-ma", n>=3?`Thấy ${n}/6 mã`:`Chỉ ${n} mã`, n>=3?"ok":"canh");
+    veVungDem(tam, c.width, c.height); }
     await new Promise(r=>setTimeout(r,800)); }
+  xoaVungDem();
 }
 
 // ---- js-aruco2: doc ma ArUco ----
@@ -362,7 +392,16 @@ $("#cd-hieu-chuan").onclick=()=>{ if(!stream){ tb("Vào màn Đếm, bật camer
   const c=layKhung(); const r=hieuChuan(c); if(r.loi){ tb(r.loi); return; }
   tb(`Hiệu chuẩn xong: ${r.soMa} mã, vùng đếm ${r.long[0]}×${r.long[1]} mm, sai số ${r.saiSo.rms} px`,4500); veCaiDat(); };
 $("#cd-ma-mm").onchange=e=>{ MA_MM=+e.target.value; localStorage.maMM=MA_MM; };
-function veCaiDat(){ try{ const hc=JSON.parse(localStorage.hieuChuan||"null"); $("#cd-hc").textContent = hc ? `${hc.soMa} mã · vùng đếm ${hc.long[0]}×${hc.long[1]} mm · sai số ${hc.saiSo?hc.saiSo.rms:"?"} px · ${new Date(hc.ngay).toLocaleDateString("vi")}` : "chưa có (đang dùng mặc định)"; }catch(e){} $("#cd-ma-mm").value=MA_MM; }
+function veCaiDat(){
+  try{
+    const hc=JSON.parse(localStorage.hieuChuan||"null");
+    const v = VUNG ? `${Math.round(VUNG.w)}×${Math.round(VUNG.h)} mm` : "chưa hợp lệ";
+    $("#cd-hc").textContent = hc
+      ? `Vùng đếm: ${v} · sai số ${hc.saiSo?hc.saiSo.rms:"?"} px RMS · ${hc.soMa} mã · ${new Date(hc.ngay).toLocaleDateString("vi")}`
+      : `Vùng đếm: ${v} — mặc định, chưa hiệu chuẩn`;
+  }catch(e){}
+  $("#cd-ma-mm").value=MA_MM;
+}
 
 // ---- cai dat ----
 $("#cd-gop").checked = localStorage.gopAnh==="1"; $("#cd-gop").onchange=e=>localStorage.gopAnh=e.target.checked?"1":"0";
@@ -376,5 +415,6 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(e){} }
 the("#k-ma","Mã ArUco: sẵn sàng","");
 taiModel();
+
 
 

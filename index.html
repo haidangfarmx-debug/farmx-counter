@@ -28,6 +28,7 @@ p.phu{color:var(--phu);font-size:15px}
 .chon button.dang{border-color:var(--xanh);background:var(--xanh-nhat);color:var(--xanh)}
 .khung{position:relative;background:#000;border-radius:16px;overflow:hidden;aspect-ratio:4/3}
 video,canvas.xem{width:100%;height:100%;object-fit:cover;display:block}
+.khung .ve{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
 .khung .lop{position:absolute;inset:0;pointer-events:none;border:3px dashed rgba(255,255,255,.55);border-radius:16px;margin:8%}
 .trang-thai{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
 .the{padding:6px 12px;border-radius:999px;font-size:14px;font-weight:600;background:#E3E8EC;color:var(--phu)}
@@ -67,7 +68,7 @@ img.kq{width:100%;border-radius:14px;display:block}
     <button data-v="tom_uong">Tôm ương</button>
     <button data-v="ca_giong">Cá giống</button>
   </div>
-  <div class="khung"><video id="cam" playsinline muted autoplay></video><div class="lop"></div></div>
+  <div class="khung"><video id="cam" playsinline muted autoplay></video><canvas id="ve" class="ve"></canvas><div class="lop"></div></div>
   <div class="trang-thai" id="kiem">
     <span class="the" id="k-cam">Camera</span>
     <span class="the" id="k-sang">Ánh sáng</span>
