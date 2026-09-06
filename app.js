@@ -4,7 +4,8 @@
 
 const SUPABASE_URL = "https://xofhpbfiuolkcbwbxume.supabase.co";
 const SUPABASE_KEY = "sb_publishable_DeOQ4ZYgl_6Oxth4eYyrbg_EBiJ6unP";
-const MODEL_URL = SUPABASE_URL + "/storage/v1/object/public/counter-model/dem_v1.onnx"; // upload sau khi train
+const MODEL_URL = "./model/dem_v0.onnx";   // YOLO11n, imgsz 1280, 1 class — tu host trong repo
+const MODEL_VER = "dem_v0";
 
 // ---- thong so nan khay ----
 // KHONG con hieu chuan luu tru. Moi tam anh tu dung lai mat phang khay tu chinh cac ma trong no.
@@ -32,8 +33,8 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
-let loHienTai = null, khayVua = null, dangChup = false;
-const PHIEN_BAN = "1.1.1";
+let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0;
+const PHIEN_BAN = "1.2";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -184,7 +185,7 @@ async function vongKiemTra(){
         const c=layKhung(CANH_DAI_DO);
         if(c.width){
           capNhatKhungXem();
-          const tam=timMa(c), n=tam.size;
+          const tam=timMa(c), n=tam.size; soMaCuoi=n;
           veVungDem(tam, c.width, c.height);
           if(n>=SO_MA)              trangThai(`Thấy ${n}/${SO_MA} mã ✓`, ghiChuModel(), "ok");
           else if(n>=MA_TOI_THIEU)  trangThai(`Thấy ${n}/${SO_MA} mã — vẫn chụp được`, ghiChuModel(), "canh");
@@ -361,8 +362,9 @@ async function taiModel(){
     if(!window.ort){ await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
     ort=window.ort; const r=await fetch(MODEL_URL,{cache:"force-cache"}); if(!r.ok) throw 0;
     session=await ort.InferenceSession.create(await r.arrayBuffer(),{executionProviders:["webgpu","wasm"]});
-    modelVer="dem_v1"; $("#tt-model").textContent="model "+modelVer; $("#cd-model").textContent=modelVer;
-  }catch(e){ $("#tt-model").textContent="chưa có model"; $("#cd-model").textContent="chưa có — sẽ tự tải khi có"; }
+    modelVer=MODEL_VER; $("#tt-model").textContent="model "+modelVer; $("#cd-model").textContent=modelVer;
+  }catch(e){ session=null; modelVer=null; $("#tt-model").textContent="chưa có model"; $("#cd-model").textContent="chưa có — sẽ tự tải khi có"; }
+  veKiem(soMaCuoi);   // o kiem Model doi mau ngay, khong cho vong xem truoc
 }
 async function demYolo(canvas, imgsz=1280, conf=0.25, iou=0.5){
   // letterbox
