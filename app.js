@@ -67,7 +67,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "1.9.1";
+const PHIEN_BAN = "1.9.2";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -1013,27 +1013,3 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// TAM THOI (test)
-window.__test={moSuaTay,veSuaTay,tinhMau,chamAnh,daiTrungVi,tamHop:null,raKetQua,BANG_MAU,get suaTay(){return suaTay},set khayVua(v){khayVua=v}};
-
-// TAM THOI (test)
-window.__test={moSuaTay,veSuaTay,tinhMau,chamAnh,tamHop,daiTrungVi,BANG_MAU,raKetQua,get suaTay(){return suaTay},set khayVua(v){khayVua=v}};

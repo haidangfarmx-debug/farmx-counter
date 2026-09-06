@@ -141,9 +141,16 @@ Chạm vào ô Model để tải lại khi hỏng.
 - Phóng to bằng hai ngón: `suaTay.zoom = {s,tx,ty}`, vẽ bằng `setTransform`, kéo khi `s>1`.
   Kẹp `s` trong [1, 8]; `ganBien()` không cho kéo ảnh ra ngoài khung. Nút "Thu vừa khung" hiện khi `s>1`.
   Canvas phải để `touch-action:none` thì `pointermove` mới nhận được hai ngón.
-- **Không đánh số trên khung.** Chỉ phân biệt bằng màu: xanh lá = máy đếm, cam = nghi đếm đôi,
-  đỏ = đã xoá, xanh dương = thêm tay. Nét chia cho `tyLeManHinh()` nên giữ đúng 3 px trên màn hình
-  ở mọi mức phóng to.
+- **Không đánh số, không tô màu riêng cho "nghi đếm đôi"** (từ v1.9.1). Mỗi con một màu lấy từ
+  `BANG_MAU` (14 màu tươi), tô mờ **25%** bên trong + viền **3 px**. Đã xoá = gạch chéo xám,
+  không còn màu. Thêm tay = giữ màu của nó nhưng viền **trắng nét đứt**.
+  `tinhMau()` tô tham lam: mỗi khung lấy màu đầu tiên chưa bị khung nào trong bán kính
+  2,5 × chiều dài trung vị dùng; điểm bắt đầu `(i*5+7)%N` nên nhìn như ngẫu nhiên mà vẫn
+  **tất định** — vẽ lại bao nhiêu lần màu cũng không đổi, không bị nhấp nháy.
+  Nét chia cho `tyLeManHinh()` nên giữ đúng 3 px trên màn hình ở mọi mức phóng to.
+
+**Trước khi commit LUÔN chạy:** `grep -n "__test\|TAM THOI" app.js` — phải không ra gì.
+v1.9.1 đã lỡ push hook test lên production vì bỏ qua bước này.
 - Khung thêm tay lấy cỡ từ `coCon()`: **trung vị rộng và cao tính RIÊNG** từ khung máy đếm được,
   không phải ô vuông cạnh dài — con giống dài và dẹt, ô vuông sẽ to gấp đôi bề ngang thật.
 - `CHAM_TOI_THIEU = 24`: vùng chạm quanh khung tối thiểu 24 px màn hình, quy về đơn vị ảnh bằng
