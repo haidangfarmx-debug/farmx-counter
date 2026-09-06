@@ -67,7 +67,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "1.9";
+const PHIEN_BAN = "1.9.1";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -670,10 +670,31 @@ async function demKhay(soKhung){
 // Khung XOA khong bi go khoi mang, chi danh co -> chi so on dinh, hoan tac khong lech.
 const HE_SO_NGHI = 1.5;   // tam cach nhau < 1,5 x chieu dai trung vi -> nghi dem doi
 const CHAM_TOI_THIEU = 24; // vung cham quanh khung, tinh bang px man hinh
+// 14 mau tuoi, de phan biet tren nen khay trang. Moi con mot mau; hai khung gan nhau khong trung mau
+// -> hai khung nam tren CUNG mot con se khac mau ro, nhin la thay ngay bi dem doi.
+const BANG_MAU = ["#e6194b","#3cb44b","#ffd400","#4363d8","#f58231","#911eb4","#00c8e6",
+                  "#f032e6","#8fd400","#ff6f91","#12a08c","#b07aff","#c07020","#0a9b4a"];
+const mauMo = (hex,a) => `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${a})`;
 function moSuaTay(anhNan, boxes, soMay){
-  suaTay = { anhNan, hop: boxes.map(b=>({b:b.slice(), xoa:false, them:false})), lichSu:[], soMay,
+  suaTay = { anhNan, hop: boxes.map(b=>({b:b.slice(), xoa:false, them:false, mau:0})), lichSu:[], soMay,
              zoom:{s:1,tx:0,ty:0}, cap:[], nghi:new Set() };
-  tinhNghiDoi(); veSuaTay();
+  tinhNghiDoi(); tinhMau(); veSuaTay();
+}
+// To mau tham lam: moi khung lay mau dau tien chua bi khung GAN nao dung.
+// Bat dau tim tu mot vi tri rai deu theo chi so nen mau trong nhu ngau nhien, khong xep day.
+function tinhMau(){
+  const gan=2.5*daiTrungVi(), g2=gan*gan, N=BANG_MAU.length;
+  suaTay.hop.forEach((h,i)=>{
+    const [cx,cy]=tamHop(h), cam=new Set();
+    for(let j=0;j<i;j++){
+      const k=suaTay.hop[j];
+      const [kx,ky]=tamHop(k), dx=cx-kx, dy=cy-ky;
+      if(dx*dx+dy*dy < g2) cam.add(k.mau);
+    }
+    const bd=(i*5+7)%N;
+    h.mau=bd;
+    for(let t=0;t<N;t++){ const m=(bd+t)%N; if(!cam.has(m)){ h.mau=m; break; } }
+  });
 }
 const soChot = () => suaTay ? suaTay.hop.filter(h=>!h.xoa).length : 0;
 const tamHop = h => [(h.b[0]+h.b[2])/2, (h.b[1]+h.b[3])/2];
@@ -718,30 +739,31 @@ function veSuaTay(){
   g.setTransform(z.s,0,0,z.s,z.tx,z.ty);
   g.drawImage(a,0,0);
   const net = 3/tl;   // giu dung 3 px tren man hinh o moi muc phong to
-  // vach noi cac cap nghi dem doi
-  g.lineWidth=Math.max(0.5, 1/tl); g.strokeStyle="rgba(230,140,0,.85)";
-  for(const [x,y] of suaTay.cap){
-    const A=suaTay.hop[x], B=suaTay.hop[y]; if(A.xoa||B.xoa) continue;
-    const [ax,ay]=tamHop(A), [bx,by]=tamHop(B);
-    g.beginPath(); g.moveTo(ax,ay); g.lineTo(bx,by); g.stroke();
-  }
-  // Chi phan biet bang MAU, khong danh so:
-  //   xanh la = may dem, cam = nghi dem doi, do = da xoa, xanh duong = them tay.
+  // Moi con MOT MAU rieng, to mo 25% ben trong + vien 3 px.
+  // Da xoa = gach cheo xam. Them tay = van mau cua no nhung vien trang net dut.
   g.lineWidth=net;
-  suaTay.hop.forEach((h,i)=>{
-    const [x1,y1,x2,y2]=h.b, w=x2-x1, hh=y2-y1;
-    if(h.xoa){ g.fillStyle="rgba(179,38,30,.35)"; g.fillRect(x1,y1,w,hh); g.strokeStyle="#B3261E"; }
-    else if(h.them)              g.strokeStyle="#1976D2";
-    else if(suaTay.nghi.has(i))  g.strokeStyle="#F08C00";
-    else                         g.strokeStyle="#22c55e";
-    g.strokeRect(x1,y1,w,hh);
+  suaTay.hop.forEach(h=>{
+    const [x1,y1,x2,y2]=h.b, w=x2-x1, hh=y2-y1, mau=BANG_MAU[h.mau%BANG_MAU.length];
+    if(h.xoa){
+      g.save(); g.beginPath(); g.rect(x1,y1,w,hh); g.clip();
+      g.strokeStyle="rgba(120,130,138,.95)"; g.lineWidth=Math.max(0.5, net*0.5);
+      const buoc=Math.max(3, 8/tl);
+      for(let k=-hh; k<w; k+=buoc){ g.beginPath(); g.moveTo(x1+k, y1+hh); g.lineTo(x1+k+hh, y1); g.stroke(); }
+      g.restore();
+      g.setLineDash([]); g.lineWidth=net; g.strokeStyle="#78858d"; g.strokeRect(x1,y1,w,hh);
+      return;
+    }
+    g.fillStyle=mauMo(mau,0.25); g.fillRect(x1,y1,w,hh);
+    if(h.them){ g.setLineDash([net*2, net*1.5]); g.strokeStyle="#ffffff"; }
+    else      { g.setLineDash([]);               g.strokeStyle=mau; }
+    g.strokeRect(x1,y1,w,hh); g.setLineDash([]);
   });
   g.setTransform(1,0,0,1,0,0);
   const may=suaTay.soMay, chot=soChot(), d=chot-may;
   $("#so-con").textContent = chot.toLocaleString("vi");
   $("#kq-sua").textContent = `Máy: ${may} · Sửa: ${d>0?"+":d<0?"−":"±"}${Math.abs(d)} · Chốt: ${chot}`;
   const nCap = suaTay.cap.filter(([x,y])=>!suaTay.hop[x].xoa && !suaTay.hop[y].xoa).length;
-  $("#kq-doi").textContent = nCap ? `Nghi đếm đôi: ${nCap} cặp — chạm khung cam để xóa` : "Không có khung nghi đếm đôi";
+  $("#kq-doi").textContent = nCap ? `${nCap} cặp khung nằm sát nhau — bấm "Xóa hết nghi đôi" để bỏ bớt` : "";
   $("#hoan-tac").disabled = !suaTay.lichSu.length;
   $("#xoa-doi").disabled = !nCap;
   $("#thu-nho").style.display = suaTay.zoom.s > 1.01 ? "" : "none";
@@ -785,11 +807,11 @@ function chamAnh(cxCss, cyCss){
     h.xoa = !h.xoa;
   } else {
     const [cw,ch]=coCon();
-    suaTay.hop.push({ b:[x-cw/2, y-ch/2, x+cw/2, y+ch/2, 1], xoa:false, them:true });
+    suaTay.hop.push({ b:[x-cw/2, y-ch/2, x+cw/2, y+ch/2, 1], xoa:false, them:true, mau:0 });
     suaTay.lichSu.push({ l:"them", i:suaTay.hop.length-1 });
   }
   if(navigator.vibrate) navigator.vibrate(20);
-  tinhNghiDoi(); veSuaTay();
+  tinhNghiDoi(); tinhMau(); veSuaTay();
 }
 (function ganCuChi(){
   const c=$("#anh-kq"); const ngon=new Map(); let batDau=null, truoc=null;
@@ -834,7 +856,7 @@ $("#hoan-tac").onclick = () => {
   else if(v.l==="xoa")       suaTay.hop[v.i].xoa=false;
   else if(v.l==="xoaNhieu")  v.ds.forEach(i=>{ suaTay.hop[i].xoa=false; });
   else                       suaTay.hop[v.i].xoa=true;
-  tinhNghiDoi(); veSuaTay();
+  tinhNghiDoi(); tinhMau(); veSuaTay();
 };
 // Xoa mot khung trong moi cap cam, giu khung diem cao. Ca loat la MOT buoc hoan tac.
 $("#xoa-doi").onclick = () => {
@@ -875,7 +897,7 @@ function raKetQua(r){
                              : "Model đang cập nhật — đã nắn khay, chưa ra số";
     anh.style.display="";
     ht.style.display = heto ? "" : "none";
-    chi.textContent = heto ? "Chạm vào con để bỏ · chạm chỗ trống để thêm · chụm 2 ngón để phóng to" : "";
+    chi.textContent = heto ? "Mỗi con một màu · chạm để bỏ · chạm chỗ trống để thêm · chụm 2 ngón để phóng to" : "";
     if(!heto){ $("#kq-sua").textContent=""; $("#kq-doi").textContent=""; }
     $("#kq-gop").textContent = (heto && r.soTruoc!=null)
       ? `Trước gộp ${r.soTruoc.toLocaleString("vi")} · sau gộp ${r.so.toLocaleString("vi")} · ${batGopTM()?"gộp thông minh":"hệ số "+heSoGop}`
@@ -1009,3 +1031,9 @@ hien(loaiCon ? "man-dem" : "man-loai");
 
 
 
+
+// TAM THOI (test)
+window.__test={moSuaTay,veSuaTay,tinhMau,chamAnh,daiTrungVi,tamHop:null,raKetQua,BANG_MAU,get suaTay(){return suaTay},set khayVua(v){khayVua=v}};
+
+// TAM THOI (test)
+window.__test={moSuaTay,veSuaTay,tinhMau,chamAnh,tamHop,daiTrungVi,BANG_MAU,raKetQua,get suaTay(){return suaTay},set khayVua(v){khayVua=v}};
