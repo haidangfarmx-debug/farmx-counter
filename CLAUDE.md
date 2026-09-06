@@ -48,7 +48,7 @@ PWA chạy trên điện thoại, mở bằng link. Đếm tôm PL / tôm ương
 ## Luồng người dùng (v1.0) — đúng 4 bước, không hơn
 1. `man-loai`: "Đếm con gì?" 3 nút to. Nhớ ở `localStorage.loaiCon`; lần sau vào thẳng bước 2, đổi bằng chip góc trên video.
 2. `man-dem`: camera tự bật, một nút tròn đỏ giữa dưới. iOS lần đầu cần một chạm → hiện nút "Bật camera" dự phòng.
-3. Bấm → nút xoay, chữ "Đang đếm…", tự chụp 3 khung cách nhau 350 ms, lấy trung vị.
+3. Bấm → nút xoay, chữ "Đang đếm…", tự chụp 3 khung cách nhau 600 ms (tổng ~1,5 s), lấy trung vị. Đừng rút ngắn: 3 khung sát nhau gần như giống hệt thì trung vị mất tác dụng lọc.
 4. `man-kq`: số to + ảnh khoanh, hai nút [Chụp tiếp] [Lưu vào lô].
    - Chưa có model: số hiện "—", dòng "Model đang cập nhật", nút Lưu mờ.
    - Dưới 3 mã: thay số bằng "Không thấy khay — chỉnh lại điện thoại", chỉ còn nút [Chụp lại].

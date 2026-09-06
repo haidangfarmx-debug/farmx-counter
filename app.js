@@ -31,7 +31,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false;
-const PHIEN_BAN = "1.0";
+const PHIEN_BAN = "1.0.1";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -321,7 +321,8 @@ async function demKhay(soKhung){
   if(navigator.vibrate) navigator.vibrate(40);
   try{
     const khung=[];
-    for(let i=0;i<soKhung;i++){ if(i) await new Promise(r=>setTimeout(r,350)); khung.push(layKhung(CANH_DAI_DO)); }
+    // gian 600 ms giua cac khung: 3 khung sat nhau gan nhu giong het, trung vi se vo dung
+    for(let i=0;i<soKhung;i++){ if(i) await new Promise(r=>setTimeout(r,600)); khung.push(layKhung(CANH_DAI_DO)); }
     const ketQua=[]; let anhCuoi=null, soMa=0, vung=null, saiSo=null;
     for(const c of khung){
       const n=nanTuDong(c); if(n.loi) continue;
