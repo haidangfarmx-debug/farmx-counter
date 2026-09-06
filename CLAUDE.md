@@ -131,3 +131,18 @@ Chạm vào ô Model để tải lại khi hỏng.
   `so_con_may` và `so_sua`. `counter_anh_gop` gửi đúng cặp `so_may_dem` / `so_sau_sua` — trước đây
   gửi cùng một số cho cả hai cột nên vô dụng cho việc train.
 - **Ảnh góp là ảnh nắn SẠCH**, không vẽ khung sửa tay lên, để còn dùng làm dữ liệu train.
+
+## Nghi đếm đôi + phóng to (v1.8)
+- `HE_SO_NGHI = 1.5`: hai khung có tâm cách nhau < 1,5 × chiều dài trung vị → tô **cam** và nối
+  vạch mỏng. Đây là dải "còn lại" giữa `heSoGop` (1,2 với dem_v01) và 1,5 — `gopCum` đã gộp phần
+  gần hơn rồi, nên khung cam là phần đáng ngờ nhưng chưa đủ chắc để tự gộp.
+- "Xóa hết nghi đôi" xoá một khung mỗi cặp (giữ khung điểm cao). Cả loạt là **một** mục
+  `{l:"xoaNhieu", ds:[…]}` trong lịch sử → một lần Hoàn tác phục hồi hết.
+- Phóng to bằng hai ngón: `suaTay.zoom = {s,tx,ty}`, vẽ bằng `setTransform`, kéo khi `s>1`.
+  Kẹp `s` trong [1, 8]; `ganBien()` không cho kéo ảnh ra ngoài khung. Nút "Thu vừa khung" hiện khi `s>1`.
+  Canvas phải để `touch-action:none` thì `pointermove` mới nhận được hai ngón.
+- Nét khung và cỡ chữ số thứ tự chia cho `tyLeManHinh()` nên **giữ nguyên 3 px / 11 px trên màn hình**
+  ở mọi mức phóng to.
+- `CHAM_TOI_THIEU = 24`: vùng chạm quanh khung tối thiểu 24 px màn hình, quy về đơn vị ảnh bằng
+  `24 / tyLeManHinh()`. Chọn khung có **tâm gần điểm chạm nhất** trong số khung nằm trong vùng.
+- Phân biệt chạm với kéo: `di < 8 px` và `< 600 ms` mới tính là chạm.

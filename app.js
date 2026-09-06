@@ -61,7 +61,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "1.7";
+const PHIEN_BAN = "1.8";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -589,72 +589,194 @@ async function demKhay(soKhung){
 // Cham vao khung -> xoa (do mo, so tru 1). Cham cho trong -> them mot con (khung xanh duong).
 // Cham lai vao khung da xoa -> phuc hoi. Hoan tac lan nguoc lich su.
 // Khung XOA khong bi go khoi mang, chi danh co -> chi so on dinh, hoan tac khong lech.
+const HE_SO_NGHI = 1.5;   // tam cach nhau < 1,5 x chieu dai trung vi -> nghi dem doi
+const CHAM_TOI_THIEU = 24; // vung cham quanh khung, tinh bang px man hinh
 function moSuaTay(anhNan, boxes, soMay){
-  suaTay = { anhNan, hop: boxes.map(b=>({b:b.slice(), xoa:false, them:false})), lichSu:[], soMay };
-  veSuaTay();
+  suaTay = { anhNan, hop: boxes.map(b=>({b:b.slice(), xoa:false, them:false})), lichSu:[], soMay,
+             zoom:{s:1,tx:0,ty:0}, cap:[], nghi:new Set() };
+  tinhNghiDoi(); veSuaTay();
 }
 const soChot = () => suaTay ? suaTay.hop.filter(h=>!h.xoa).length : 0;
-function coKhung(){
-  const c=suaTay.hop.filter(h=>!h.them).map(h=>Math.max(h.b[2]-h.b[0], h.b[3]-h.b[1])).sort((a,b)=>a-b);
+const tamHop = h => [(h.b[0]+h.b[2])/2, (h.b[1]+h.b[3])/2];
+function daiTrungVi(){
+  const c=suaTay.hop.filter(h=>!h.xoa && !h.them).map(h=>Math.max(h.b[2]-h.b[0], h.b[3]-h.b[1])).sort((a,b)=>a-b);
   return c.length ? c[Math.floor(c.length/2)] : Math.max(12, Math.round(suaTay.anhNan.width/25));
+}
+// Cac cap nghi dem doi: gopCum da gop cac cap gan hon heSoGop roi, nen day la dai
+// "con lai" giua heSoGop va HE_SO_NGHI — gan dang ngo nhung chua du chac de tu gop.
+function tinhNghiDoi(){
+  const song = suaTay.hop.map((h,i)=>({h,i})).filter(o=>!o.h.xoa);
+  const n2 = (HE_SO_NGHI*daiTrungVi())**2;
+  const cap=[];
+  for(let a=0;a<song.length;a++) for(let b=a+1;b<song.length;b++){
+    const [ax,ay]=tamHop(song[a].h), [bx,by]=tamHop(song[b].h);
+    const dx=ax-bx, dy=ay-by;
+    if(dx*dx+dy*dy < n2) cap.push([song[a].i, song[b].i]);
+  }
+  suaTay.cap = cap;
+  suaTay.nghi = new Set(cap.flat());
+}
+// Ty le tu don vi anh -> px man hinh, de net ve va chu giu nguyen co du phong to bao nhieu.
+function tyLeManHinh(){
+  const c=$("#anh-kq"), r=c.getBoundingClientRect();
+  return (r.width ? r.width/c.width : 1) * suaTay.zoom.s;
 }
 function veSuaTay(){
   if(!suaTay) return;
   const c=$("#anh-kq"), a=suaTay.anhNan;
   if(c.width!==a.width || c.height!==a.height){ c.width=a.width; c.height=a.height; }
-  const g=c.getContext("2d");
-  g.clearRect(0,0,c.width,c.height); g.drawImage(a,0,0);
-  g.lineWidth=Math.max(2, Math.round(c.width/300));
-  for(const h of suaTay.hop){
+  const g=c.getContext("2d"), z=suaTay.zoom, tl=tyLeManHinh();
+  g.setTransform(1,0,0,1,0,0);
+  g.fillStyle="#000"; g.fillRect(0,0,c.width,c.height);
+  g.setTransform(z.s,0,0,z.s,z.tx,z.ty);
+  g.drawImage(a,0,0);
+  const net = 3/tl, chu = Math.max(7, 11/tl);
+  // vach noi cac cap nghi dem doi
+  g.lineWidth=Math.max(0.5, 1/tl); g.strokeStyle="rgba(230,140,0,.85)";
+  for(const [x,y] of suaTay.cap){
+    const A=suaTay.hop[x], B=suaTay.hop[y]; if(A.xoa||B.xoa) continue;
+    const [ax,ay]=tamHop(A), [bx,by]=tamHop(B);
+    g.beginPath(); g.moveTo(ax,ay); g.lineTo(bx,by); g.stroke();
+  }
+  g.lineWidth=net; g.font=`700 ${chu}px system-ui,sans-serif`; g.textBaseline="bottom";
+  let stt=0;
+  suaTay.hop.forEach((h,i)=>{
     const [x1,y1,x2,y2]=h.b, w=x2-x1, hh=y2-y1;
     if(h.xoa){ g.fillStyle="rgba(179,38,30,.35)"; g.fillRect(x1,y1,w,hh); g.strokeStyle="#B3261E"; }
-    else g.strokeStyle = h.them ? "#1976D2" : "#22c55e";
+    else if(h.them)              g.strokeStyle="#1976D2";
+    else if(suaTay.nghi.has(i))  g.strokeStyle="#F08C00";   // cam = nghi dem doi
+    else                         g.strokeStyle="#22c55e";
     g.strokeRect(x1,y1,w,hh);
-  }
+    if(!h.xoa){ stt++;
+      g.fillStyle=g.strokeStyle; g.fillText(String(stt), x1, y1-net); }
+  });
+  g.setTransform(1,0,0,1,0,0);
   const may=suaTay.soMay, chot=soChot(), d=chot-may;
   $("#so-con").textContent = chot.toLocaleString("vi");
   $("#kq-sua").textContent = `Máy: ${may} · Sửa: ${d>0?"+":d<0?"−":"±"}${Math.abs(d)} · Chốt: ${chot}`;
+  const nCap = suaTay.cap.filter(([x,y])=>!suaTay.hop[x].xoa && !suaTay.hop[y].xoa).length;
+  $("#kq-doi").textContent = nCap ? `Nghi đếm đôi: ${nCap} cặp — chạm khung cam để xóa` : "Không có khung nghi đếm đôi";
   $("#hoan-tac").disabled = !suaTay.lichSu.length;
+  $("#xoa-doi").disabled = !nCap;
+  $("#thu-nho").style.display = suaTay.zoom.s > 1.01 ? "" : "none";
 }
-$("#anh-kq").onclick = e => {
-  if(!suaTay) return;
-  const c=$("#anh-kq"), r=c.getBoundingClientRect();
+// ---- cham / keo / phong to bang hai ngon ----
+function ganBien(){
+  const c=$("#anh-kq"), z=suaTay.zoom;
+  const gan=(t,dai,khung)=>{ const r=dai*z.s;
+    return r<=khung ? (khung-r)/2 : Math.min(0, Math.max(khung-r, t)); };
+  z.tx=gan(z.tx, c.width, c.width); z.ty=gan(z.ty, c.height, c.height);
+}
+function phongTo(k, cxCss, cyCss){
+  const c=$("#anh-kq"), r=c.getBoundingClientRect(), z=suaTay.zoom;
+  const X=(cxCss-r.left)*c.width/r.width, Y=(cyCss-r.top)*c.height/r.height;
+  const u=(X-z.tx)/z.s, v=(Y-z.ty)/z.s;
+  z.s=Math.min(8, Math.max(1, z.s*k));
+  z.tx=X-u*z.s; z.ty=Y-v*z.s; ganBien();
+}
+function keo(dxCss, dyCss){
+  const c=$("#anh-kq"), r=c.getBoundingClientRect(), z=suaTay.zoom;
   if(!r.width) return;
-  const x=(e.clientX-r.left)*c.width/r.width, y=(e.clientY-r.top)*c.height/r.height;
-  let iTim=-1, nhoNhat=Infinity;
-  suaTay.hop.forEach((h,i)=>{ const [x1,y1,x2,y2]=h.b;
-    if(x>=x1 && x<=x2 && y>=y1 && y<=y2){ const s=(x2-x1)*(y2-y1); if(s<nhoNhat){ nhoNhat=s; iTim=i; } } });
+  z.tx += dxCss*c.width/r.width; z.ty += dyCss*c.height/r.height; ganBien();
+}
+function chamAnh(cxCss, cyCss){
+  const c=$("#anh-kq"), r=c.getBoundingClientRect(), z=suaTay.zoom;
+  if(!r.width) return;
+  const X=(cxCss-r.left)*c.width/r.width, Y=(cyCss-r.top)*c.height/r.height;
+  const x=(X-z.tx)/z.s, y=(Y-z.ty)/z.s;
+  const dung = CHAM_TOI_THIEU/tyLeManHinh();   // vung cham >= 24 px man hinh
+  let iTim=-1, ganNhat=Infinity;
+  suaTay.hop.forEach((h,i)=>{
+    const [x1,y1,x2,y2]=h.b;
+    if(x>=x1-dung && x<=x2+dung && y>=y1-dung && y<=y2+dung){
+      const [tx,ty]=tamHop(h); const kc=Math.hypot(x-tx, y-ty);
+      if(kc<ganNhat){ ganNhat=kc; iTim=i; }
+    }
+  });
   if(iTim>=0){
     const h=suaTay.hop[iTim];
     suaTay.lichSu.push({ l: h.xoa ? "phuc" : "xoa", i: iTim });
     h.xoa = !h.xoa;
   } else {
-    const k=coKhung();
+    const k=daiTrungVi();
     suaTay.hop.push({ b:[x-k/2, y-k/2, x+k/2, y+k/2, 1], xoa:false, them:true });
     suaTay.lichSu.push({ l:"them", i:suaTay.hop.length-1 });
   }
   if(navigator.vibrate) navigator.vibrate(20);
-  veSuaTay();
-};
+  tinhNghiDoi(); veSuaTay();
+}
+(function ganCuChi(){
+  const c=$("#anh-kq"); const ngon=new Map(); let batDau=null, truoc=null;
+  const hai=()=>{ const [a,b]=[...ngon.values()];
+    return { d:Math.hypot(a.x-b.x,a.y-b.y), mx:(a.x+b.x)/2, my:(a.y+b.y)/2 }; };
+  c.addEventListener("pointerdown", e=>{
+    if(!suaTay) return;
+    c.setPointerCapture(e.pointerId);
+    ngon.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ngon.size===1) batDau={x:e.clientX,y:e.clientY,t:performance.now(),di:0};
+    else { batDau=null; truoc=hai(); }
+  });
+  c.addEventListener("pointermove", e=>{
+    if(!suaTay || !ngon.has(e.pointerId)) return;
+    const p=ngon.get(e.pointerId), dx=e.clientX-p.x, dy=e.clientY-p.y;
+    p.x=e.clientX; p.y=e.clientY;
+    if(ngon.size===1){
+      if(batDau) batDau.di += Math.hypot(dx,dy);
+      if(suaTay.zoom.s>1.01){ keo(dx,dy); veSuaTay(); }
+    } else if(ngon.size===2){
+      const h=hai();
+      if(truoc && truoc.d>0){ phongTo(h.d/truoc.d, h.mx, h.my); keo(h.mx-truoc.mx, h.my-truoc.my); veSuaTay(); }
+      truoc=h;
+    }
+  });
+  const het = e => {
+    if(!suaTay) return;
+    const mot = ngon.size===1;
+    ngon.delete(e.pointerId);
+    if(ngon.size<2) truoc=null;
+    if(mot && batDau && batDau.di<8 && performance.now()-batDau.t<600) chamAnh(e.clientX, e.clientY);
+    batDau=null;
+  };
+  c.addEventListener("pointerup", het);
+  c.addEventListener("pointercancel", e=>{ ngon.delete(e.pointerId); batDau=null; truoc=null; });
+})();
+$("#thu-nho").onclick = () => { if(!suaTay) return; suaTay.zoom={s:1,tx:0,ty:0}; veSuaTay(); };
 $("#hoan-tac").onclick = () => {
   if(!suaTay || !suaTay.lichSu.length) return;
   const v=suaTay.lichSu.pop();
-  if(v.l==="them")      suaTay.hop.splice(v.i,1);
-  else if(v.l==="xoa")  suaTay.hop[v.i].xoa=false;
-  else                  suaTay.hop[v.i].xoa=true;
-  veSuaTay();
+  if(v.l==="them")           suaTay.hop.splice(v.i,1);
+  else if(v.l==="xoa")       suaTay.hop[v.i].xoa=false;
+  else if(v.l==="xoaNhieu")  v.ds.forEach(i=>{ suaTay.hop[i].xoa=false; });
+  else                       suaTay.hop[v.i].xoa=true;
+  tinhNghiDoi(); veSuaTay();
+};
+// Xoa mot khung trong moi cap cam, giu khung diem cao. Ca loat la MOT buoc hoan tac.
+$("#xoa-doi").onclick = () => {
+  if(!suaTay || !suaTay.cap.length) return;
+  const ds=[];
+  for(const [a,b] of suaTay.cap){
+    const A=suaTay.hop[a], B=suaTay.hop[b];
+    if(A.xoa || B.xoa) continue;
+    const bo = (A.b[4] >= B.b[4]) ? b : a;
+    suaTay.hop[bo].xoa=true; ds.push(bo);
+  }
+  if(!ds.length) return;
+  suaTay.lichSu.push({ l:"xoaNhieu", ds });
+  if(navigator.vibrate) navigator.vibrate([30,40,30]);
+  tinhNghiDoi(); veSuaTay();
+  tb(`Đã xóa ${ds.length} khung nghi đếm đôi.`);
 };
 
 // ---- ket qua ----
 function raKetQua(r){
   const soEl=$("#kq-so"), loiEl=$("#kq-loi"), phuEl=$("#kq-phu"), anh=$("#anh-kq"),
         luu=$("#them-khay"), tiep=$("#chup-lai"), db=$("#kq-buoc"),
-        ht=$("#hoan-tac"), chi=$("#kq-chi");
+        ht=$("#hang-sua"), chi=$("#kq-chi");
   const den = r.den==null ? 4 : r.den;
   if(r.loi){
     db.className="kq-buoc loi"; db.textContent=`Dừng ở bước ${den}/4`;
     soEl.style.display="none"; loiEl.style.display=""; loiEl.textContent=r.loi;
-    phuEl.textContent=""; $("#kq-gop").textContent=""; $("#kq-sua").textContent=""; chi.textContent="";
+    phuEl.textContent=""; $("#kq-gop").textContent=""; $("#kq-sua").textContent=""; $("#kq-doi").textContent=""; chi.textContent="";
     anh.style.display="none"; ht.style.display="none"; suaTay=null;
     luu.style.display="none"; tiep.textContent="Chụp lại";
   } else {
@@ -667,8 +789,8 @@ function raKetQua(r){
                              : "Model đang cập nhật — đã nắn khay, chưa ra số";
     anh.style.display="";
     ht.style.display = heto ? "" : "none";
-    chi.textContent = heto ? "Chạm vào con để bỏ · chạm chỗ trống để thêm" : "";
-    if(!heto) $("#kq-sua").textContent="";
+    chi.textContent = heto ? "Chạm vào con để bỏ · chạm chỗ trống để thêm · chụm 2 ngón để phóng to" : "";
+    if(!heto){ $("#kq-sua").textContent=""; $("#kq-doi").textContent=""; }
     $("#kq-gop").textContent = (heto && r.soTruoc!=null)
       ? `Trước gộp ${r.soTruoc.toLocaleString("vi")} · sau gộp ${r.so.toLocaleString("vi")} (hệ số ${heSoGop})`
       : "";
@@ -780,6 +902,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 

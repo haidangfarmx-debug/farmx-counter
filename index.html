@@ -50,7 +50,10 @@ input,textarea{width:100%;padding:14px;border:2px solid #CBD5DD;border-radius:12
 .ds .muc small{color:var(--phu);display:block;margin-top:4px}
 .trong{text-align:center;color:var(--phu);padding:40px 10px}
 .thong-bao{position:fixed;top:70px;left:16px;right:16px;background:var(--chu);color:#fff;padding:14px 16px;border-radius:12px;font-size:15px;display:none;z-index:9}
-.kq{width:100%;border-radius:14px;display:block;touch-action:manipulation}
+.kq{width:100%;border-radius:14px;display:block;touch-action:none;background:#000}
+.kq-doi{font-size:14px;font-weight:600;color:var(--canh);margin-top:6px;text-align:center}
+.hang-nut{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.hang-nut .nut{flex:1;margin:0;min-width:130px;padding:14px 8px;font-size:16px}
 .kq-sua{font-size:17px;font-weight:700;color:var(--chu);margin-top:8px;text-align:center}
 .kq-chi{font-size:13px;color:var(--phu);margin-top:4px;text-align:center}
 .tien-do{height:6px;background:#E3F2FD;border-radius:3px;overflow:hidden;margin-top:10px}
@@ -165,8 +168,13 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
   <canvas class="kq" id="anh-kq"></canvas>
   <p class="kq-chi" id="kq-chi"></p>
   <p class="kq-sua" id="kq-sua"></p>
+  <p class="kq-doi" id="kq-doi"></p>
   <p class="kq-gop" id="kq-gop"></p>
-  <button class="nut phu2" id="hoan-tac">Hoàn tác</button>
+  <div class="hang-nut" id="hang-sua">
+    <button class="nut phu2" id="hoan-tac">Hoàn tác</button>
+    <button class="nut phu2" id="xoa-doi">Xóa hết nghi đôi</button>
+    <button class="nut phu2" id="thu-nho" style="display:none">Thu vừa khung</button>
+  </div>
   <div class="doi-nut">
     <button class="nut" id="chup-lai">Chụp tiếp</button>
     <button class="nut ok" id="them-khay">Lưu vào lô</button>
