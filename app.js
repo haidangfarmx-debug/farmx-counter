@@ -6,69 +6,67 @@ const SUPABASE_URL = "https://xofhpbfiuolkcbwbxume.supabase.co";
 const SUPABASE_KEY = "sb_publishable_DeOQ4ZYgl_6Oxth4eYyrbg_EBiJ6unP";
 const MODEL_URL = SUPABASE_URL + "/storage/v1/object/public/counter-model/dem_v1.onnx"; // upload sau khi train
 
-// ---- thong so khay (mm) ----
-const PX_MM = 2;            // do phan giai anh nan: px moi mm
-const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan (dien thoai chay nhanh)
-const LE_DEM = 30;          // vung dem thut vao 30 mm moi phia so voi hinh chu nhat noi cac tam ma
-const CHE_MA = 35;          // to xam o 35x35 mm quanh moi ma truoc khi dua vao model
-let MA_MM = +(localStorage.maMM || 25);   // canh mot ma ArUco (mm): 25 = ban in A4, 17 = sticker
-// Cau truc hieu chuan DUY NHAT (mac dinh, localStorage va hieuChuan() deu dung):
-//   { tam:{id:[x_mm,y_mm]}, long:[dai,rong], go, maMM, saiSo:{max,rms}, ngay, soMa }
-//   tam = tam cac ma theo mm (nguon su that duy nhat; long/go chi de hien thi)
-//   Vung dem suy ra tu tam bang vungDem(): bao cac tam ma roi thut vao LE_DEM moi phia.
-const HC_MAC_DINH = {
-  tam: { 0:[25,25], 1:[495,25], 2:[24.4,312], 3:[507,306], 4:[269.3,20.1], 5:[271.2,311.3] },
-  maMM: 25, ngay: null, soMa: 6
-};
-// Vung dem (mm) trong he toa do khay: hinh chu nhat noi cac tam ma, thut vao LE_DEM moi phia.
+// ---- thong so nan khay ----
+// KHONG con hieu chuan luu tru. Moi tam anh tu dung lai mat phang khay tu chinh cac ma trong no.
+// Don vi lam viec la "don vi ma": canh mot ma = MA_DV. Dem con giong khong can mm that,
+// nen moi kich thuoc deu tinh theo canh ma -> in ma 25 mm hay 17 mm deu chay dung nhu nhau.
+const MA_DV = 25;           // canh mot ma = 25 don vi
+const LE_DEM = 30;          // vung dem thut vao 30 don vi = 1,2 lan canh ma
+const CHE_MA = 35;          // o che quanh moi ma = 35 don vi = 1,4 lan canh ma
+const PX_DV = 2;            // px moi don vi trong anh nan
+const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan
+// Vung dem: hinh chu nhat noi cac tam ma, thut vao LE_DEM moi phia.
 function vungDem(tam){
-  const v=Object.values(tam); if(v.length<2) return null;
+  const v=Object.values(tam); if(v.length<3) return null;
   const xs=v.map(p=>p[0]), ys=v.map(p=>p[1]);
   const x0=Math.min(...xs), y0=Math.min(...ys), x1=Math.max(...xs), y1=Math.max(...ys);
   const w=x1-x0-2*LE_DEM, h=y1-y0-2*LE_DEM;
   return (w>0&&h>0) ? {x:x0+LE_DEM, y:y0+LE_DEM, w, h} : null;
 }
-let HC = HC_MAC_DINH;
-try { const h = JSON.parse(localStorage.hieuChuan || "null"); if (h && h.tam && vungDem(h.tam)) HC = h; } catch(e){}
-let TAM_MA = HC.tam, VUNG = vungDem(TAM_MA);
 
 const $ = s => document.querySelector(s);
 const tb = (m, ms=2500) => { const e=$("#tb"); e.textContent=m; e.style.display="block"; clearTimeout(tb.t); tb.t=setTimeout(()=>e.style.display="none", ms); };
 const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="the "+(cls||""); };
 
 // ---- trang thai ----
-let loaiCon = "pl", stream = null, ort = null, session = null, modelVer = null;
-let nghieng = false, loHienTai = null, khayVua = null;
-const PHIEN_BAN = "0.9";
+let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
+let loHienTai = null, khayVua = null, dangChup = false;
+const PHIEN_BAN = "1.0";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => hien(b.dataset.m));
-function hien(m){ document.querySelectorAll(".man").forEach(s=>s.classList.toggle("hien", s.id===m));
-  $("#hanh-dong").classList.toggle("hien", m==="man-dem" && !!stream);
+function hien(m){
+  document.querySelectorAll(".man").forEach(s=>s.classList.toggle("hien", s.id===m));
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("dang", b.dataset.m===m));
-  if(m==="man-ls") veLichSu(); if(m==="man-lo") veLo(); }
-document.querySelectorAll("#loai button").forEach(b => b.onclick = () => { loaiCon=b.dataset.v; document.querySelectorAll("#loai button").forEach(x=>x.classList.toggle("dang", x===b)); });
+  document.body.classList.toggle("che-nav", m==="man-loai");   // buoc 1 khong co thanh dieu huong
+  if(m==="man-ls") veLichSu(); if(m==="man-lo") veLo(); if(m==="man-cd") veCaiDat();
+  if(m==="man-dem") batCamera();
+}
+// ---- buoc 1: dem con gi ----
+const tenLoai=v=>({pl:"Tôm PL",tom_uong:"Tôm ương",ca_giong:"Cá giống"})[v]||v;
+document.querySelectorAll("#loai button").forEach(b => b.onclick = () => {
+  loaiCon=b.dataset.v; localStorage.loaiCon=loaiCon; capNhatLoai(); hien("man-dem"); });
+function capNhatLoai(){ const t=loaiCon?tenLoai(loaiCon):"—";
+  $("#chip-loai").textContent=t; const e=$("#cd-loai"); if(e) e.textContent=t; }
+$("#chip-loai").onclick=()=>hien("man-loai");
 
 // ---- camera ----
-$("#bat-cam").onclick = async () => {
+// ---- buoc 2: camera bat san ----
+$("#bat-cam").onclick = () => batCamera(true);
+async function batCamera(nguoiBam){
+  if(stream || batCamera.dangMo) return; batCamera.dangMo = true;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 4032 }, height: { ideal: 3024 } }, audio: false });
-    const v=$("#cam"); v.srcObject = stream; the("#k-cam","Camera OK","ok");
+    const v=$("#cam"); v.srcObject = stream;
     v.addEventListener("loadedmetadata", capNhatKhungXem); capNhatKhungXem();
-    $("#bat-cam").style.display="none"; $("#hanh-dong").classList.add("hien");
-    theoDoiNghieng(); vongKiemTra();
-  } catch(e){ the("#k-cam","Không mở được camera","loi"); tb("Cho phép camera trong trình duyệt (Chrome/Safari), mở bằng https."); }
-};
-
-function theoDoiNghieng(){
-  if(!window.DeviceOrientationEvent) { the("#k-ngang","Không có cảm biến",""); nghieng=false; return; }
-  const bat = () => window.addEventListener("deviceorientation", ev => {
-    const ok = Math.abs(ev.beta||0) < 8 && Math.abs(ev.gamma||0) < 8; nghieng = !ok;
-    the("#k-ngang", ok ? "Nằm ngang OK" : "Điện thoại đang nghiêng", ok ? "ok" : "canh");
-  });
-  if (DeviceOrientationEvent.requestPermission) DeviceOrientationEvent.requestPermission().then(r=>{ if(r==="granted") bat(); else { nghieng=false; the("#k-ngang","Bỏ qua",""); } }).catch(()=>{nghieng=false;});
-  else bat();
+    $("#bat-cam").style.display="none"; $("#chup").disabled=false;
+    vongKiemTra();
+  } catch(e){
+    // iOS doi mot cham vao man hinh cho lan dau -> hien nut de nguoi dung cham
+    $("#bat-cam").style.display=""; $("#chup").disabled=true;
+    if(nguoiBam) tb("Cho phép camera trong trình duyệt, mở bằng https.");
+  } finally { batCamera.dangMo=false; }
 }
 
 // Khong truyen canhDai = lay nguyen co (cho model). Co truyen = ve thang ra canvas nho.
@@ -89,57 +87,44 @@ function capNhatKhungXem(){
   const e=$("#cd-cam"); if(e) e.textContent=`${w}×${h} (${w/k}:${h/k})`;
 }
 
-function kiemSang(canvas){
-  const g=canvas.getContext("2d"), s=4; const d=g.getImageData(0,0,canvas.width,canvas.height).data;
-  let sum=0,n=0,choi=0; for(let i=0;i<d.length;i+=4*s){ const y=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; sum+=y; n++; if(y>245) choi++; }
-  const m=sum/n, c=choi/n; if(m<60) return ["Tối quá","loi"]; if(m>210||c>0.05) return ["Chói / sáng quá","loi"]; return ["Ánh sáng OK","ok"]; }
-
-// Ve vung dem len tren video: khung xanh la + to mo ben ngoai.
-// Canvas #ve co cung kich thuoc khung hinh voi video va cung CSS object-fit:cover,
-// nen trinh duyet ap dung y het phep bien -> khong phai tu tinh toa do hien thi.
+// Ve vung dem len tren video: khung xanh la + to mo ben ngoai. Vung dem tinh tu chinh
+// khung hinh nay, khong dung so lieu luu san. Canvas #ve cung kich thuoc khung hinh va
+// cung CSS object-fit:contain nen trinh duyet ap dung y het phep bien nhu video.
 function veVungDem(tam, w, h){
   const cv=$("#ve"), lop=document.querySelector(".khung .lop"); if(!cv) return;
   if(cv.width!==w || cv.height!==h){ cv.width=w; cv.height=h; }
   const g=cv.getContext("2d"); g.clearRect(0,0,w,h);
+  const mp = tam.size>=3 ? matPhang(tam) : null;
   let goc=null;
-  if(VUNG && tam.size>=3){
-    const ids=[...tam.keys()];
-    const H=tinhH(ids.map(i=>[TAM_MA[i][0]*PX_MM, TAM_MA[i][1]*PX_MM]),
-                  ids.map(i=>[tam.get(i)[0], tam.get(i)[1]]));
-    if(H){ const V=VUNG;
-      goc=[[V.x,V.y],[V.x+V.w,V.y],[V.x+V.w,V.y+V.h],[V.x,V.y+V.h]]
-          .map(p=>apH(H,[p[0]*PX_MM, p[1]*PX_MM]));
-      if(goc.some(p=>!isFinite(p[0])||!isFinite(p[1]))) goc=null; }
-  }
-  if(lop) lop.style.display = goc ? "none" : "";   // an khung gach dut khi da co khung that
+  if(mp){ const V=mp.vung;
+    goc=[[V.x,V.y],[V.x+V.w,V.y],[V.x+V.w,V.y+V.h],[V.x,V.y+V.h]]
+        .map(p=>apH(mp.H,[p[0]*PX_DV, p[1]*PX_DV]));
+    if(goc.some(p=>!isFinite(p[0])||!isFinite(p[1]))) goc=null; }
+  if(lop) lop.style.display = goc ? "none" : "";
   if(!goc) return;
   const duong=()=>{ g.moveTo(goc[0][0],goc[0][1]); for(let i=1;i<4;i++) g.lineTo(goc[i][0],goc[i][1]); g.closePath(); };
-  g.beginPath(); g.rect(0,0,w,h); duong();          // hai duong bao + evenodd = chi to ben ngoai
+  g.beginPath(); g.rect(0,0,w,h); duong();
   g.fillStyle="rgba(0,0,0,.45)"; g.fill("evenodd");
   g.beginPath(); duong();
   g.strokeStyle="#22c55e"; g.lineWidth=Math.max(3,Math.round(w/240)); g.lineJoin="round"; g.stroke();
 }
 function xoaVungDem(){ const cv=$("#ve"), lop=document.querySelector(".khung .lop");
   if(cv) cv.getContext("2d").clearRect(0,0,cv.width,cv.height); if(lop) lop.style.display=""; }
-
-// Ma dang thieu so voi bang hieu chuan.
-function maThieu(tam){ return Object.keys(TAM_MA).map(Number).sort((a,b)=>a-b).filter(i=>!tam.has(i)); }
+function bao(m){ const e=$("#bao"); e.textContent=m||""; e.classList.toggle("hien", !!m); }
 async function vongKiemTra(){
   while(stream){
-    const c=layKhung(CANH_DAI_DO);          // xem truoc chi can anh nho -> nhe cho may
-    if(c.width){
-      capNhatKhungXem();
-      const [t,k]=kiemSang(c); the("#k-sang",t,k);
-      const tam=timMa(c), n=tam.size, can=Object.keys(TAM_MA).length, thieu=maThieu(tam);
-      the("#k-ma", n>=3?`Thấy ${n}/${can} mã`:`Chỉ ${n} mã`, n>=3?"ok":"canh");
-      $("#k-thieu").textContent = thieu.length
-        ? `Thấy ${n}/${can} mã — thiếu mã số ${thieu.join(", ")}`
-        : `Đủ ${can} mã.`;
-      veVungDem(tam, c.width, c.height);
+    if(!dangChup && $("#man-dem").classList.contains("hien")){
+      const c=layKhung(CANH_DAI_DO);
+      if(c.width){
+        capNhatKhungXem();
+        const tam=timMa(c);
+        veVungDem(tam, c.width, c.height);
+        bao(tam.size<3 ? "Không thấy khay — chỉnh lại điện thoại" : "");
+      }
     }
     await new Promise(r=>setTimeout(r,800));
   }
-  xoaVungDem(); $("#k-thieu").textContent="";
+  xoaVungDem(); bao("");
 }
 
 // ---- js-aruco2: doc ma ArUco ----
@@ -245,28 +230,58 @@ function warp(canvas,H,w,h,offX,offY){
   const c=document.createElement("canvas"); c.width=w; c.height=h;
   c.getContext("2d").putImageData(out,0,0); return c;
 }
-// To xam o CHE_MA x CHE_MA mm quanh moi ma, de model khong dem nham ma thanh con giong.
-function cheMa(c, vung){
-  const g=c.getContext("2d"); g.fillStyle="#808080";
-  const k=CHE_MA*PX_MM;
-  for(const id in TAM_MA){ const p=TAM_MA[id];
-    const x=(p[0]-vung.x)*PX_MM-k/2, y=(p[1]-vung.y)*PX_MM-k/2;
+// To xam o CHE_MA quanh moi ma, de model khong dem nham ma thanh con giong.
+function cheMa(c, vung, tamDV){
+  const g=c.getContext("2d"); g.fillStyle="#808080"; const k=CHE_MA*PX_DV;
+  for(const id in tamDV){ const p=tamDV[id];
+    const x=(p[0]-vung.x)*PX_DV-k/2, y=(p[1]-vung.y)*PX_DV-k/2;
     if(x+k>0 && y+k>0 && x<c.width && y<c.height) g.fillRect(x,y,k,k); }
 }
-// Nan khay: warp thang ra dung vung dem (thut LE_DEM mm so voi hinh chu nhat noi cac tam ma),
-// roi che cac ma lai. Do ma va warp deu tren anh da thu nho cho nhanh.
-function nanKhay(canvas){
-  if(!VUNG) return {loi:"Hiệu chuẩn chưa hợp lệ — vùng đếm rỗng"};
+// Dung lai mat phang khay tu CHINH cac ma trong tam anh nay — khong dung so lieu luu san.
+//   1. Homography anh -> mat phang tu 4 goc cua ma neo (ID nho nhat).
+//   2. Chieu toan bo 4*n goc qua no de co toa do tam thoi.
+//   3. epVuong(): ep tung ma ve dung hinh vuong canh MA_DV (chi xoay + tinh tien).
+//      Day la buoc dua rang buoc "ma nao cung vuong va bang nhau" vao -> khu duoc phoi canh.
+//   4. Khop lai homography bang ca 4*n goc, lap lai tu buoc 2.
+// H tra ve bien toa do anh NAN (px) -> toa do anh vao (px).
+function matPhang(tam){
+  const ids=[...tam.keys()].sort((a,b)=>a-b); if(ids.length<3) return null;
+  const M=MA_DV, gocAnh=[];
+  for(const id of ids) for(const g of tam.get(id).goc) gocAnh.push(g);
+  let H=tinhH(tam.get(ids[0]).goc, [[0,0],[M,0],[M,M],[0,M]]);
+  if(!H) return null;
+  let dv=null, gocDV=null;
+  for(let lap=0; lap<8; lap++){
+    dv={}; gocDV=[];
+    for(const id of ids){ const e=epVuong(tam.get(id).goc.map(g=>apH(H,g)), M);
+      dv[id]=e.tam; gocDV.push(...e.goc); }
+    const Hm=tinhH(gocAnh,gocDV); if(!Hm) break; H=Hm;
+  }
+  if(!dv) return null;
+  const xs=ids.map(i=>dv[i][0]), ys=ids.map(i=>dv[i][1]);
+  const ox=Math.min(...xs), oy=Math.min(...ys);
+  for(const id of ids) dv[id]=[dv[id][0]-ox, dv[id][1]-oy];
+  for(const g of gocDV){ g[0]-=ox; g[1]-=oy; }
+  const vung=vungDem(dv); if(!vung) return null;
+  const gocPx=gocDV.map(p=>[p[0]*PX_DV, p[1]*PX_DV]);
+  const Hnan=tinhH(gocPx, gocAnh); if(!Hnan) return null;
+  let max=0, tong=0;
+  for(let k=0;k<gocPx.length;k++){ const q=apH(Hnan,gocPx[k]);
+    const e=Math.hypot(q[0]-gocAnh[k][0], q[1]-gocAnh[k][1]); max=Math.max(max,e); tong+=e*e; }
+  return { tam:dv, vung, H:Hnan, soMa:ids.length,
+           saiSo:{ max:+max.toFixed(2), rms:+Math.sqrt(tong/gocPx.length).toFixed(2) } };
+}
+// Nan khay tu dong trong mot tam anh: tim ma -> mat phang -> cat vung dem -> che ma.
+function nanTuDong(canvas){
   const {canvas:nho}=thuNho(canvas);
-  const tam=timMa(nho); if(tam.size<3) return {loi:`Chỉ thấy ${tam.size} mã (cần ≥3)`};
-  const ids=[...tam.keys()];
-  const tu=ids.map(id=>[TAM_MA[id][0]*PX_MM, TAM_MA[id][1]*PX_MM]);   // toa do khay (px anh nan)
-  const den=ids.map(id=>[tam.get(id)[0], tam.get(id)[1]]);            // toa do anh da thu nho (px)
-  const H=tinhH(tu,den); if(!H) return {loi:"Không tính được phép nắn khay"};
-  const c=warp(nho, H, Math.round(VUNG.w*PX_MM), Math.round(VUNG.h*PX_MM),
-               Math.round(VUNG.x*PX_MM), Math.round(VUNG.y*PX_MM));
-  cheMa(c, VUNG);
-  return {canvas:c, soMa:tam.size};
+  const tam=timMa(nho);
+  if(tam.size<3) return {loi:"khay", soMa:tam.size};
+  const mp=matPhang(tam); if(!mp) return {loi:"khay", soMa:tam.size};
+  const V=mp.vung;
+  const c=warp(nho, mp.H, Math.round(V.w*PX_DV), Math.round(V.h*PX_DV),
+               Math.round(V.x*PX_DV), Math.round(V.y*PX_DV));
+  cheMa(c, V, mp.tam);
+  return { canvas:c, soMa:mp.soMa, vung:V, saiSo:mp.saiSo };
 }
 
 // ---- ONNX: YOLO ----
@@ -296,46 +311,60 @@ async function demYolo(canvas, imgsz=1280, conf=0.25, iou=0.5){
 function iouBox(a,b){ const x1=Math.max(a[0],b[0]),y1=Math.max(a[1],b[1]),x2=Math.min(a[2],b[2]),y2=Math.min(a[3],b[3]); const i=Math.max(0,x2-x1)*Math.max(0,y2-y1); const u=(a[2]-a[0])*(a[3]-a[1])+(b[2]-b[0])*(b[3]-b[1])-i; return u>0?i/u:0; }
 function veBox(canvas,boxes){ const g=canvas.getContext("2d"); g.lineWidth=2; g.strokeStyle="#22c55e"; boxes.forEach(b=>g.strokeRect(b[0],b[1],b[2]-b[0],b[3]-b[1])); return canvas; }
 
-// ---- quay 5 s va dem ----
-$("#chup").onclick = () => demKhay(5);
-$("#chup-1").onclick = () => demKhay(1);
+// ---- buoc 3: bam mot nut, tu chup 3 khung, lay trung vi ----
+$("#chup").onclick = () => demKhay(3);
 async function demKhay(soKhung){
-  if(!stream){ tb("Chưa bật camera."); return; }
-  if(nghieng) tb("Điện thoại đang nghiêng — vẫn chụp, nhưng nên đặt nằm ngang.",2000);
-  const btn=$("#chup"), btn1=$("#chup-1"); btn.disabled=btn1.disabled=true; btn.textContent=soKhung>1?"Đang quay…":"Đang chụp…"; btn1.textContent="…"; const td=$("#td");
-  if(navigator.vibrate) navigator.vibrate(60);
-  tb(soKhung>1?"Đang quay 5 giây, giữ yên…":"Đang chụp…",1500);
-  try {
-  // Lay thang o cO da thu nho: nanKhay() dang nao cung thu nho ve CANH_DAI_DO nen chat luong
-  // anh nan KHONG doi, ma khong phai giu 5 canvas 12 MP cung luc (~244 MB, Safari iPhone se sap).
-  const khung=[]; for(let i=0;i<soKhung;i++){ if(soKhung>1) await new Promise(r=>setTimeout(r,1000)); khung.push(layKhung(CANH_DAI_DO)); td.style.width=Math.round((i+1)*60/soKhung)+"%"; }
-  btn.textContent="Đang đếm…";
-  const [t,k]=kiemSang(khung[Math.floor(khung.length/2)]); if(k==="loi"){ tb("Ảnh "+t.toLowerCase()+". Che nắng hoặc chụp lại."); return reset(); }
-  const ketQua=[]; let anhCuoi=null, soMa=0;
-  for(const c of khung){ const n=nanKhay(c); if(n.loi){ continue; } soMa=n.soMa;
-    if(session){ const bx=await demYolo(n.canvas); ketQua.push(bx.length); anhCuoi=veBox(n.canvas,bx); } else { anhCuoi=n.canvas; }
-    td.style.width=(60+ketQua.length*8)+"%"; }
-  if(!anhCuoi){ tb("Không thấy đủ mã ArUco. Gạt con giống khỏi gờ, lau mã, chụp lại."); return reset(); }
-  let so=null; if(ketQua.length){ ketQua.sort((a,b)=>a-b); so=ketQua[Math.floor(ketQua.length/2)]; }
-  khayVua={ so, anh:anhCuoi.toDataURL("image/jpeg",0.8), loai:loaiCon, soMa, khung:ketQua };
-  $("#so-con").textContent = so===null ? "—" : so.toLocaleString("vi");
-  $("#anh-kq").src=khayVua.anh; const e=$("#kq-the"); e.innerHTML="";
-  e.appendChild(Object.assign(document.createElement("span"),{className:"the ok",textContent:`${soMa}/6 mã`}));
-  e.appendChild(Object.assign(document.createElement("span"),{className:"the "+(session?"ok":"canh"),textContent:session?`${ketQua.length} khung: ${ketQua.join(", ")}`:"Chưa có model — chỉ nắn khay"}));
-  $("#them-khay").disabled = so===null; reset(); hien("man-kq");
-  if(navigator.vibrate) navigator.vibrate([40,40,40]);
-  } catch(e){ tb("Lỗi khi xử lý ảnh: "+(e&&e.message||e),5000); reset(); }
-  function reset(){ btn.disabled=btn1.disabled=false; btn.textContent="Quay 5 giây"; btn1.textContent="Chụp 1 tấm"; td.style.width="0"; }
+  if(!stream || dangChup) return;
+  dangChup=true;
+  const btn=$("#chup"); btn.disabled=true; btn.classList.add("chay");
+  $("#chup-chu").textContent="Đang đếm…"; bao("");
+  if(navigator.vibrate) navigator.vibrate(40);
+  try{
+    const khung=[];
+    for(let i=0;i<soKhung;i++){ if(i) await new Promise(r=>setTimeout(r,350)); khung.push(layKhung(CANH_DAI_DO)); }
+    const ketQua=[]; let anhCuoi=null, soMa=0, vung=null, saiSo=null;
+    for(const c of khung){
+      const n=nanTuDong(c); if(n.loi) continue;
+      soMa=n.soMa; vung=n.vung; saiSo=n.saiSo;
+      if(session){ const bx=await demYolo(n.canvas); ketQua.push(bx.length); anhCuoi=veBox(n.canvas,bx); }
+      else anhCuoi=n.canvas;
+    }
+    if(!anhCuoi){ raKetQua({loi:true}); return; }
+    let so=null; if(ketQua.length){ ketQua.sort((a,b)=>a-b); so=ketQua[Math.floor(ketQua.length/2)]; }
+    khayVua={ so, anh:anhCuoi.toDataURL("image/jpeg",0.8), loai:loaiCon, soMa, khung:ketQua };
+    raKetQua({so, soMa, vung, saiSo, soKhung:khung.length});
+  } catch(e){ tb("Lỗi khi xử lý ảnh: "+(e&&e.message||e),4000); }
+  finally{ dangChup=false; btn.disabled=false; btn.classList.remove("chay"); $("#chup-chu").textContent="Chụp"; }
+}
+// ---- buoc 4: ket qua ----
+function raKetQua(r){
+  const soEl=$("#kq-so"), loiEl=$("#kq-loi"), phuEl=$("#kq-phu"), anh=$("#anh-kq"),
+        luu=$("#them-khay"), tiep=$("#chup-lai");
+  if(r.loi){
+    soEl.style.display="none"; loiEl.style.display=""; loiEl.textContent="Không thấy khay — chỉnh lại điện thoại";
+    phuEl.textContent=""; anh.removeAttribute("src"); anh.style.display="none";
+    luu.style.display="none"; tiep.textContent="Chụp lại";
+  } else {
+    soEl.style.display=""; loiEl.style.display="none";
+    $("#so-con").textContent = r.so===null ? "—" : r.so.toLocaleString("vi");
+    phuEl.textContent = r.so===null ? "Model đang cập nhật"
+                                    : `Trung vị ${khayVua.khung.length}/${r.soKhung} khung · thấy ${r.soMa} mã`;
+    anh.src=khayVua.anh; anh.style.display="";
+    luu.style.display=""; luu.disabled = r.so===null; tiep.textContent="Chụp tiếp";
+    const e=$("#cd-lan");
+    if(e) e.textContent=`${r.soMa} mã · vùng đếm ${Math.round(r.vung.w)}×${Math.round(r.vung.h)} đv · sai số ${r.saiSo.rms} px`;
+  }
+  if(navigator.vibrate) navigator.vibrate(r.loi?[80,60,80]:[40,40,40]);
+  hien("man-kq");
 }
 $("#chup-lai").onclick=()=>hien("man-dem");
 $("#them-khay").onclick=()=>{ if(!loHienTai) loHienTai={ id:crypto.randomUUID(), thoi_gian:new Date().toISOString(), loai_con:loaiCon, khay:[], anh:[], khach:"", ghi_chu:"" };
-  loHienTai.khay.push(khayVua.so); loHienTai.anh.push(khayVua.anh); luuNhap(); hien("man-lo"); };
+  loHienTai.khay.push(khayVua.so); loHienTai.anh.push(khayVua.anh); luuNhap(); tb("Đã thêm khay vào lô."); hien("man-dem"); };
 
 // ---- lo ----
 function veLo(){ const l=loHienTai; $("#lo-tong").textContent=l?l.khay.reduce((a,b)=>a+b,0).toLocaleString("vi"):"0";
   $("#lo-khay").textContent=l?l.khay.length:"0"; $("#lo-loai").textContent=l?tenLoai(l.loai_con):"—"; $("#lo-tung").textContent=l?l.khay.join(" + "):"—";
   if(l){ $("#lo-khach").value=l.khach; $("#lo-ghi").value=l.ghi_chu; } }
-const tenLoai=v=>({pl:"Tôm PL",tom_uong:"Tôm ương",ca_giong:"Cá giống"})[v]||v;
 $("#lo-them").onclick=()=>hien("man-dem");
 $("#lo-huy").onclick=()=>{ if(confirm("Hủy lô đang đếm?")){ loHienTai=null; localStorage.removeItem("loNhap"); hien("man-dem"); } };
 $("#lo-khach").oninput=e=>{ if(loHienTai){ loHienTai.khach=e.target.value; luuNhap(); } };
@@ -366,14 +395,7 @@ async function gopAnh(l){ for(let i=0;i<l.anh.length;i++){ const blob=await (awa
   if(up.ok) await fetch(SUPABASE_URL+"/rest/v1/counter_anh_gop",{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},
     body:JSON.stringify({thiet_bi_id:thietBiId,lo_id:l.id,loai_con:l.loai_con,so_may_dem:l.khay[i],so_sau_sua:l.khay[i],model_ver:l.model_ver,duong_dan:path})}); } }
 
-// ---- hieu chuan tu anh khay trong (khu phoi canh that) ----
-// Moi ma la mot hinh vuong canh MA_MM mm nam cung mot mat phang. Cach lam:
-//   1. Dung 4 goc cua ma neo (ID nho nhat) de dung homography anh -> mat phang mm.
-//   2. Chieu toan bo 4*n goc qua homography do de co toa do mm tam thoi.
-//   3. Ep tung ma ve dung hinh vuong canh MA_MM (chi cho xoay + tinh tien) — buoc nay
-//      dua rang buoc "ma nao cung 25 mm" vao, nho vay moi khu duoc phoi canh.
-//   4. Khop lai homography bang toan bo 4*n goc (binh phuong toi thieu), lap lai tu buoc 2.
-// Sai so tai chieu bao ra la khoang cach px giua goc do duoc va goc chieu nguoc tu mm.
+// ---- dung lai mat phang khay (dung boi matPhang) ----
 function apH(H,p){ const d=H[6]*p[0]+H[7]*p[1]+H[8];
   return [(H[0]*p[0]+H[1]*p[1]+H[2])/d, (H[3]*p[0]+H[4]*p[1]+H[5])/d]; }
 // Ep 4 diem ve hinh vuong canh M (Procrustes 2D: chi xoay + tinh tien, khong doi ty le).
@@ -386,55 +408,8 @@ function epVuong(p, M){
   const t=Math.atan2(sin,cos), c=Math.cos(t), n=Math.sin(t);
   return { tam:[cx,cy], goc:q.map(v=>[cx+v[0]*c-v[1]*n, cy+v[0]*n+v[1]*c]) };
 }
-function hieuChuan(canvas){
-  const {canvas:nho}=thuNho(canvas);
-  const tam=timMa(nho); if(tam.size<4) return {loi:`Chỉ thấy ${tam.size} mã, cần ≥ 4`};
-  const ids=[...tam.keys()].sort((a,b)=>a-b), neo=ids[0], M=MA_MM;
-  const gocAnh=[]; for(const id of ids) for(const g of tam.get(id).goc) gocAnh.push(g);
-  let H=tinhH(tam.get(neo).goc, [[0,0],[M,0],[M,M],[0,M]]);   // anh -> mm
-  if(!H) return {loi:`Không dựng được phép chiếu từ mã ID${neo}`};
-  let mmTam=null, gocMM=null;
-  for(let lap=0; lap<10; lap++){
-    mmTam={}; gocMM=[];
-    for(const id of ids){ const e=epVuong(tam.get(id).goc.map(g=>apH(H,g)), M);
-      mmTam[id]=e.tam; gocMM.push(...e.goc); }
-    const Hm=tinhH(gocAnh, gocMM); if(!Hm) break; H=Hm;
-  }
-  // dich goc toa do: tam ma tren-trai nhat ve (0,0)
-  const xs=ids.map(i=>mmTam[i][0]), ys=ids.map(i=>mmTam[i][1]);
-  const ox=Math.min(...xs), oy=Math.min(...ys);
-  for(const id of ids) mmTam[id]=[mmTam[id][0]-ox, mmTam[id][1]-oy];
-  for(const g of gocMM){ g[0]-=ox; g[1]-=oy; }
-  const vung=vungDem(mmTam);
-  if(!vung) return {loi:`Vùng đếm rỗng — các mã cách nhau chưa quá ${2*LE_DEM} mm`};
-  // sai so tai chieu: mm -> anh, do bang px tren anh da thu nho
-  const Hnguoc=tinhH(gocMM, gocAnh);
-  let max=0, tong=0;
-  if(Hnguoc) for(let i=0;i<gocMM.length;i++){ const q=apH(Hnguoc,gocMM[i]);
-    const e=Math.hypot(q[0]-gocAnh[i][0], q[1]-gocAnh[i][1]); max=Math.max(max,e); tong+=e*e; }
-  const saiSo={ max:+max.toFixed(2), rms:+Math.sqrt(tong/gocMM.length).toFixed(2) };
-  const hc={ tam:mmTam, long:[Math.round(vung.w),Math.round(vung.h)], go:LE_DEM,
-             maMM:M, saiSo, ngay:new Date().toISOString(), soMa:ids.length };
-  localStorage.hieuChuan=JSON.stringify(hc);
-  HC=hc; TAM_MA=hc.tam; VUNG=vungDem(TAM_MA);
-  return hc;
-}
-$("#cd-hieu-chuan").onclick=()=>{ if(!stream){ tb("Vào màn Đếm, bật camera, đặt khay trống rồi bấm lại."); return; }
-  const c=layKhung(); const r=hieuChuan(c); if(r.loi){ tb(r.loi); return; }
-  tb(`Hiệu chuẩn xong: ${r.soMa} mã, vùng đếm ${r.long[0]}×${r.long[1]} mm, sai số ${r.saiSo.rms} px`,4500); veCaiDat(); };
-$("#cd-ma-mm").onchange=e=>{ MA_MM=+e.target.value; localStorage.maMM=MA_MM; };
-function veCaiDat(){
-  try{
-    const hc=JSON.parse(localStorage.hieuChuan||"null");
-    const v = VUNG ? `${Math.round(VUNG.w)}×${Math.round(VUNG.h)} mm` : "chưa hợp lệ";
-    $("#cd-hc").textContent = hc
-      ? `Vùng đếm: ${v} · sai số ${hc.saiSo?hc.saiSo.rms:"?"} px RMS · ${hc.soMa} mã · ${new Date(hc.ngay).toLocaleDateString("vi")}`
-      : `Vùng đếm: ${v} — mặc định, chưa hiệu chuẩn`;
-  }catch(e){}
-  $("#cd-ma-mm").value=MA_MM;
-}
-
 // ---- cai dat ----
+function veCaiDat(){ $("#cd-pb").textContent=PHIEN_BAN; capNhatLoai(); }
 $("#cd-gop").checked = localStorage.gopAnh==="1"; $("#cd-gop").onchange=e=>localStorage.gopAnh=e.target.checked?"1":"0";
 $("#cd-model-tai").onclick=()=>{ tb("Đang kiểm tra…"); taiModel(); };
 veCaiDat();
@@ -445,8 +420,10 @@ $("#cd-xoa").onclick=async()=>{ if(confirm("Xóa toàn bộ lô trên máy?")){ 
 // ---- khoi dong ----
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(e){} }
-the("#k-ma","Mã ArUco: sẵn sàng","");
 taiModel();
+capNhatLoai();
+hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 

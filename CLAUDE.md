@@ -12,23 +12,24 @@ PWA chạy trên điện thoại, mở bằng link. Đếm tôm PL / tôm ương
 
 ## Khay và mã ArUco
 - 6 mã ArUco ID 0–5 (4 góc + 2 giữa cạnh dài), tự điển DICT_4X4_50.
-- **Cạnh mã (viền đen ngoài cùng) = 25 mm** với bản in A4 đang dùng. Sticker in sau này 17 mm — không sửa code, chọn trong màn Cài đặt (`#cd-ma-mm`, lưu ở `localStorage.maMM`).
+- Cạnh mã in ra bao nhiêu mm **không còn quan trọng** (từ v1.0). Mọi kích thước tính theo *đơn vị mã*: `MA_DV = 25` là cạnh một mã, `LE_DEM = 30` (1,2 lần cạnh mã), `CHE_MA = 35` (1,4 lần). Bản in A4 25 mm hay sticker 17 mm đều chạy đúng như nhau, không phải chọn gì.
 - js-aruco2 không có DICT_4X4_50; dùng `ARUCO_4X4_1000`, 50 mã đầu trùng OpenCV. `timMa()` lọc bỏ ID > 5.
-- `TAM_MA` mặc định trong `app.js` là số đo cũ và **không khớp khay thật** (sai tới 79 px khi khớp homography). Luôn bấm Hiệu chuẩn trước khi đếm thật; `TAM_MA` chỉ còn là giá trị dự phòng.
+- **Không còn `TAM_MA` và không còn hiệu chuẩn** (từ v1.0). `matPhang()` dựng lại mặt phẳng khay từ chính các mã trong từng tấm ảnh, mỗi lần chụp một lần, không lưu gì.
 
-## Vùng đếm (từ v0.7)
-- Nguồn sự thật duy nhất là `tam` (tâm 6 mã theo mm). `vungDem()` suy ra vùng đếm: hình chữ nhật nối các tâm mã, **thụt vào 30 mm mỗi phía** (`LE_DEM`).
+## Vùng đếm
+- `vungDem()` suy từ tâm các mã **thấy được trong chính tấm ảnh đó**: hình chữ nhật nối các tâm, **thụt vào `LE_DEM` mỗi phía**.
 - Trước khi đưa vào model, tô xám ô **35×35 mm** quanh mỗi mã (`CHE_MA`) để model không đếm nhầm mã. Với khay hiện tại các ô này nằm trọn ngoài vùng đếm nên chưa kích hoạt — giữ làm bảo hiểm khi mã dán lệch vào trong.
-- Ảnh nắn có kích thước `vùng đếm (mm) × PX_MM`, PX_MM = 2. Không hardcode kích thước ảnh nắn.
+- Ảnh nắn có kích thước `vùng đếm × PX_DV`, PX_DV = 2. Không hardcode kích thước ảnh nắn.
+- Cần **≥ 3 mã**; dưới đó báo "Không thấy khay — chỉnh lại điện thoại". Lưu ý: thiếu mã thì hình chữ nhật nối tâm nhỏ đi, nên **vùng đếm co lại** và số đếm giữa các lần chụp không so sánh được. Muốn số ổn định thì phải thấy đủ 6 mã.
 
 ## Bẫy đã gặp — đừng lặp
 - KHÔNG hardcode `TAM_MA`/kích thước ảnh nắn. Mọi thứ suy từ `tam` của bản hiệu chuẩn.
 - Sai số khớp homography tính trên 6 **tâm** mã luôn ra ~0 và **vô nghĩa** — tâm mm sinh ra từ chính homography đó. Chỉ số thật là sai số tái chiếu trên **24 góc** mà `hieuChuan()` trả về (`saiSo.rms`).
-- `hieuChuan()` phải khử phối cảnh bằng ràng buộc "mỗi mã là hình vuông 25 mm" (hàm `epVuong`), nếu chỉ chiếu tâm theo tỉ lệ thì góc chụp nghiêng sẽ bị ghi thẳng vào bảng hiệu chuẩn.
-- Ảnh iPhone 3024×4032 dò mã mất ~1,2 s. `timMa()`/`nanKhay()`/`hieuChuan()` tự thu nhỏ về cạnh dài 1600 px (`CANH_DAI_DO`) trước khi xử lý → còn ~270 ms; giữ ảnh gốc cho model.
+- `matPhang()` khử phối cảnh bằng ràng buộc "mỗi mã là hình vuông bằng nhau" (hàm `epVuong`); nếu chỉ chiếu tâm theo tỉ lệ thì góc chụp nghiêng sẽ méo thẳng vào ảnh nắn.
+- Ảnh iPhone 3024×4032 dò mã mất ~1,2 s. `timMa()`/`nanTuDong()`/`matPhang()` tự thu nhỏ về cạnh dài 1600 px (`CANH_DAI_DO`) trước khi xử lý → còn ~270 ms; giữ ảnh gốc cho model.
 
 ## Việc tiếp theo
-1. ~~Hiệu chuẩn từ ảnh khay trống~~ — xong ở v0.7, khử phối cảnh bằng 24 góc, sai số tái chiếu 1,21 px RMS trên `tools/mau/khay-trong.jpg`.
+1. ~~Hiệu chuẩn~~ — bỏ hẳn ở v1.0, thay bằng nắn tự động trong từng tấm ảnh (sai số tái chiếu 1,22 px RMS trên `tools/mau/khay-trong.jpg`, bằng đúng bản hiệu chuẩn cũ).
 2. Sửa tay kết quả đếm (chạm thêm/bỏ box).
 3. PDF 1 trang + chia sẻ Zalo (jsPDF hoặc canvas → ảnh).
 4. Gắn model khi có `dem_v1.onnx`; hậu xử lý YOLO đã có trong `demYolo()`.
@@ -43,3 +44,13 @@ PWA chạy trên điện thoại, mở bằng link. Đếm tôm PL / tôm ương
 - Test nhanh: mở `index.html` qua http server local; camera cần https hoặc localhost.
 - Sau khi push, Cloudflare tự deploy; kiểm tra trên điện thoại thật, mở link 2 lần để SW cập nhật.
 - Mỗi lần sửa: tăng `PHIEN_BAN` trong `app.js` và tên `CACHE` trong `sw.js` trong cùng commit.
+
+## Luồng người dùng (v1.0) — đúng 4 bước, không hơn
+1. `man-loai`: "Đếm con gì?" 3 nút to. Nhớ ở `localStorage.loaiCon`; lần sau vào thẳng bước 2, đổi bằng chip góc trên video.
+2. `man-dem`: camera tự bật, một nút tròn đỏ giữa dưới. iOS lần đầu cần một chạm → hiện nút "Bật camera" dự phòng.
+3. Bấm → nút xoay, chữ "Đang đếm…", tự chụp 3 khung cách nhau 350 ms, lấy trung vị.
+4. `man-kq`: số to + ảnh khoanh, hai nút [Chụp tiếp] [Lưu vào lô].
+   - Chưa có model: số hiện "—", dòng "Model đang cập nhật", nút Lưu mờ.
+   - Dưới 3 mã: thay số bằng "Không thấy khay — chỉnh lại điện thoại", chỉ còn nút [Chụp lại].
+
+Không thêm bước, không thêm nút vào luồng này. Thông số kỹ thuật nằm trong Cài đặt > Nâng cao (đóng sẵn).
