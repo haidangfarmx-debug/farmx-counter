@@ -141,8 +141,11 @@ Chạm vào ô Model để tải lại khi hỏng.
 - Phóng to bằng hai ngón: `suaTay.zoom = {s,tx,ty}`, vẽ bằng `setTransform`, kéo khi `s>1`.
   Kẹp `s` trong [1, 8]; `ganBien()` không cho kéo ảnh ra ngoài khung. Nút "Thu vừa khung" hiện khi `s>1`.
   Canvas phải để `touch-action:none` thì `pointermove` mới nhận được hai ngón.
-- Nét khung và cỡ chữ số thứ tự chia cho `tyLeManHinh()` nên **giữ nguyên 3 px / 11 px trên màn hình**
+- **Không đánh số trên khung.** Chỉ phân biệt bằng màu: xanh lá = máy đếm, cam = nghi đếm đôi,
+  đỏ = đã xoá, xanh dương = thêm tay. Nét chia cho `tyLeManHinh()` nên giữ đúng 3 px trên màn hình
   ở mọi mức phóng to.
+- Khung thêm tay lấy cỡ từ `coCon()`: **trung vị rộng và cao tính RIÊNG** từ khung máy đếm được,
+  không phải ô vuông cạnh dài — con giống dài và dẹt, ô vuông sẽ to gấp đôi bề ngang thật.
 - `CHAM_TOI_THIEU = 24`: vùng chạm quanh khung tối thiểu 24 px màn hình, quy về đơn vị ảnh bằng
   `24 / tyLeManHinh()`. Chọn khung có **tâm gần điểm chạm nhất** trong số khung nằm trong vùng.
 - Phân biệt chạm với kéo: `di < 8 px` và `< 600 ms` mới tính là chạm.

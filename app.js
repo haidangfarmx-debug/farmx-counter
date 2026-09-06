@@ -61,7 +61,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "1.8";
+const PHIEN_BAN = "1.8.1";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -598,9 +598,17 @@ function moSuaTay(anhNan, boxes, soMay){
 }
 const soChot = () => suaTay ? suaTay.hop.filter(h=>!h.xoa).length : 0;
 const tamHop = h => [(h.b[0]+h.b[2])/2, (h.b[1]+h.b[3])/2];
+const trungVi = a => { const x=a.slice().sort((p,q)=>p-q); return x[Math.floor(x.length/2)]; };
 function daiTrungVi(){
-  const c=suaTay.hop.filter(h=>!h.xoa && !h.them).map(h=>Math.max(h.b[2]-h.b[0], h.b[3]-h.b[1])).sort((a,b)=>a-b);
-  return c.length ? c[Math.floor(c.length/2)] : Math.max(12, Math.round(suaTay.anhNan.width/25));
+  const c=suaTay.hop.filter(h=>!h.xoa && !h.them).map(h=>Math.max(h.b[2]-h.b[0], h.b[3]-h.b[1]));
+  return c.length ? trungVi(c) : Math.max(12, Math.round(suaTay.anhNan.width/25));
+}
+// Co khung dien hinh cua MOT CON: trung vi rong va cao tinh RIENG, tu chinh khung may dem duoc.
+// Khong dung o vuong canh dai — con giong dai va det, o vuong se to gap doi be ngang that.
+function coCon(){
+  const hs=suaTay.hop.filter(h=>!h.them);
+  if(!hs.length){ const k=Math.max(12, Math.round(suaTay.anhNan.width/25)); return [k, Math.round(k/2)]; }
+  return [ trungVi(hs.map(h=>h.b[2]-h.b[0])), trungVi(hs.map(h=>h.b[3]-h.b[1])) ];
 }
 // Cac cap nghi dem doi: gopCum da gop cac cap gan hon heSoGop roi, nen day la dai
 // "con lai" giua heSoGop va HE_SO_NGHI — gan dang ngo nhung chua du chac de tu gop.
@@ -630,7 +638,7 @@ function veSuaTay(){
   g.fillStyle="#000"; g.fillRect(0,0,c.width,c.height);
   g.setTransform(z.s,0,0,z.s,z.tx,z.ty);
   g.drawImage(a,0,0);
-  const net = 3/tl, chu = Math.max(7, 11/tl);
+  const net = 3/tl;   // giu dung 3 px tren man hinh o moi muc phong to
   // vach noi cac cap nghi dem doi
   g.lineWidth=Math.max(0.5, 1/tl); g.strokeStyle="rgba(230,140,0,.85)";
   for(const [x,y] of suaTay.cap){
@@ -638,17 +646,16 @@ function veSuaTay(){
     const [ax,ay]=tamHop(A), [bx,by]=tamHop(B);
     g.beginPath(); g.moveTo(ax,ay); g.lineTo(bx,by); g.stroke();
   }
-  g.lineWidth=net; g.font=`700 ${chu}px system-ui,sans-serif`; g.textBaseline="bottom";
-  let stt=0;
+  // Chi phan biet bang MAU, khong danh so:
+  //   xanh la = may dem, cam = nghi dem doi, do = da xoa, xanh duong = them tay.
+  g.lineWidth=net;
   suaTay.hop.forEach((h,i)=>{
     const [x1,y1,x2,y2]=h.b, w=x2-x1, hh=y2-y1;
     if(h.xoa){ g.fillStyle="rgba(179,38,30,.35)"; g.fillRect(x1,y1,w,hh); g.strokeStyle="#B3261E"; }
     else if(h.them)              g.strokeStyle="#1976D2";
-    else if(suaTay.nghi.has(i))  g.strokeStyle="#F08C00";   // cam = nghi dem doi
+    else if(suaTay.nghi.has(i))  g.strokeStyle="#F08C00";
     else                         g.strokeStyle="#22c55e";
     g.strokeRect(x1,y1,w,hh);
-    if(!h.xoa){ stt++;
-      g.fillStyle=g.strokeStyle; g.fillText(String(stt), x1, y1-net); }
   });
   g.setTransform(1,0,0,1,0,0);
   const may=suaTay.soMay, chot=soChot(), d=chot-may;
@@ -698,8 +705,8 @@ function chamAnh(cxCss, cyCss){
     suaTay.lichSu.push({ l: h.xoa ? "phuc" : "xoa", i: iTim });
     h.xoa = !h.xoa;
   } else {
-    const k=daiTrungVi();
-    suaTay.hop.push({ b:[x-k/2, y-k/2, x+k/2, y+k/2, 1], xoa:false, them:true });
+    const [cw,ch]=coCon();
+    suaTay.hop.push({ b:[x-cw/2, y-ch/2, x+cw/2, y+ch/2, 1], xoa:false, them:true });
     suaTay.lichSu.push({ l:"them", i:suaTay.hop.length-1 });
   }
   if(navigator.vibrate) navigator.vibrate(20);
@@ -902,6 +909,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 
