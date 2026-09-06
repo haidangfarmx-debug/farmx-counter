@@ -39,7 +39,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = "pl", stream = null, ort = null, session = null, modelVer = null;
 let nghieng = false, loHienTai = null, khayVua = null;
-const PHIEN_BAN = "0.8";
+const PHIEN_BAN = "0.9";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -53,8 +53,9 @@ document.querySelectorAll("#loai button").forEach(b => b.onclick = () => { loaiC
 // ---- camera ----
 $("#bat-cam").onclick = async () => {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false });
-    $("#cam").srcObject = stream; the("#k-cam","Camera OK","ok");
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 4032 }, height: { ideal: 3024 } }, audio: false });
+    const v=$("#cam"); v.srcObject = stream; the("#k-cam","Camera OK","ok");
+    v.addEventListener("loadedmetadata", capNhatKhungXem); capNhatKhungXem();
     $("#bat-cam").style.display="none"; $("#hanh-dong").classList.add("hien");
     theoDoiNghieng(); vongKiemTra();
   } catch(e){ the("#k-cam","Không mở được camera","loi"); tb("Cho phép camera trong trình duyệt (Chrome/Safari), mở bằng https."); }
@@ -70,7 +71,23 @@ function theoDoiNghieng(){
   else bat();
 }
 
-function layKhung(){ const v=$("#cam"); const c=document.createElement("canvas"); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext("2d").drawImage(v,0,0); return c; }
+// Khong truyen canhDai = lay nguyen co (cho model). Co truyen = ve thang ra canvas nho.
+function layKhung(canhDai){
+  const v=$("#cam"); let w=v.videoWidth, h=v.videoHeight;
+  if(canhDai && w && h){ const m=Math.max(w,h);
+    if(m>canhDai){ const s=canhDai/m; w=Math.round(w*s); h=Math.round(h*s); } }
+  const c=document.createElement("canvas"); c.width=w; c.height=h;
+  if(w&&h) c.getContext("2d").drawImage(v,0,0,w,h);
+  return c;
+}
+// Khung xem: dat ty le dung bang ty le that cua stream -> object-fit:contain khong xen mep.
+function capNhatKhungXem(){
+  const v=$("#cam"); if(!v || !v.videoWidth) return;
+  const w=v.videoWidth, h=v.videoHeight;
+  document.querySelector(".khung").style.setProperty("--ty-le", w+" / "+h);
+  const g=(a,b)=>b?g(b,a%b):a, k=g(w,h);
+  const e=$("#cd-cam"); if(e) e.textContent=`${w}×${h} (${w/k}:${h/k})`;
+}
 
 function kiemSang(canvas){
   const g=canvas.getContext("2d"), s=4; const d=g.getImageData(0,0,canvas.width,canvas.height).data;
@@ -105,12 +122,24 @@ function veVungDem(tam, w, h){
 function xoaVungDem(){ const cv=$("#ve"), lop=document.querySelector(".khung .lop");
   if(cv) cv.getContext("2d").clearRect(0,0,cv.width,cv.height); if(lop) lop.style.display=""; }
 
+// Ma dang thieu so voi bang hieu chuan.
+function maThieu(tam){ return Object.keys(TAM_MA).map(Number).sort((a,b)=>a-b).filter(i=>!tam.has(i)); }
 async function vongKiemTra(){
-  while(stream){ const c=layKhung(); if(c.width){ const [t,k]=kiemSang(c); the("#k-sang",t,k);
-    const tam=timMa(c), n=tam.size; the("#k-ma", n>=3?`Thấy ${n}/6 mã`:`Chỉ ${n} mã`, n>=3?"ok":"canh");
-    veVungDem(tam, c.width, c.height); }
-    await new Promise(r=>setTimeout(r,800)); }
-  xoaVungDem();
+  while(stream){
+    const c=layKhung(CANH_DAI_DO);          // xem truoc chi can anh nho -> nhe cho may
+    if(c.width){
+      capNhatKhungXem();
+      const [t,k]=kiemSang(c); the("#k-sang",t,k);
+      const tam=timMa(c), n=tam.size, can=Object.keys(TAM_MA).length, thieu=maThieu(tam);
+      the("#k-ma", n>=3?`Thấy ${n}/${can} mã`:`Chỉ ${n} mã`, n>=3?"ok":"canh");
+      $("#k-thieu").textContent = thieu.length
+        ? `Thấy ${n}/${can} mã — thiếu mã số ${thieu.join(", ")}`
+        : `Đủ ${can} mã.`;
+      veVungDem(tam, c.width, c.height);
+    }
+    await new Promise(r=>setTimeout(r,800));
+  }
+  xoaVungDem(); $("#k-thieu").textContent="";
 }
 
 // ---- js-aruco2: doc ma ArUco ----
@@ -277,7 +306,9 @@ async function demKhay(soKhung){
   if(navigator.vibrate) navigator.vibrate(60);
   tb(soKhung>1?"Đang quay 5 giây, giữ yên…":"Đang chụp…",1500);
   try {
-  const khung=[]; for(let i=0;i<soKhung;i++){ if(soKhung>1) await new Promise(r=>setTimeout(r,1000)); khung.push(layKhung()); td.style.width=Math.round((i+1)*60/soKhung)+"%"; }
+  // Lay thang o cO da thu nho: nanKhay() dang nao cung thu nho ve CANH_DAI_DO nen chat luong
+  // anh nan KHONG doi, ma khong phai giu 5 canvas 12 MP cung luc (~244 MB, Safari iPhone se sap).
+  const khung=[]; for(let i=0;i<soKhung;i++){ if(soKhung>1) await new Promise(r=>setTimeout(r,1000)); khung.push(layKhung(CANH_DAI_DO)); td.style.width=Math.round((i+1)*60/soKhung)+"%"; }
   btn.textContent="Đang đếm…";
   const [t,k]=kiemSang(khung[Math.floor(khung.length/2)]); if(k==="loi"){ tb("Ảnh "+t.toLowerCase()+". Che nắng hoặc chụp lại."); return reset(); }
   const ketQua=[]; let anhCuoi=null, soMa=0;
@@ -408,6 +439,7 @@ $("#cd-gop").checked = localStorage.gopAnh==="1"; $("#cd-gop").onchange=e=>local
 $("#cd-model-tai").onclick=()=>{ tb("Đang kiểm tra…"); taiModel(); };
 veCaiDat();
 document.querySelector("header b").textContent="FarmX Counter v"+PHIEN_BAN;
+$("#cd-pb").textContent=PHIEN_BAN;
 $("#cd-xoa").onclick=async()=>{ if(confirm("Xóa toàn bộ lô trên máy?")){ indexedDB.deleteDatabase("farmx"); localStorage.removeItem("loNhap"); loHienTai=null; tb("Đã xóa."); } };
 
 // ---- khoi dong ----
@@ -415,6 +447,7 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(e){} }
 the("#k-ma","Mã ArUco: sẵn sàng","");
 taiModel();
+
 
 
 

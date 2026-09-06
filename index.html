@@ -26,9 +26,9 @@ p.phu{color:var(--phu);font-size:15px}
 .chon{display:flex;gap:8px;margin:10px 0}
 .chon button{flex:1;padding:14px 6px;border-radius:12px;border:2px solid #BBDEFB;background:#fff;font:inherit;font-size:16px;font-weight:600;color:var(--phu)}
 .chon button.dang{border-color:var(--xanh);background:var(--xanh-nhat);color:var(--xanh)}
-.khung{position:relative;background:#000;border-radius:16px;overflow:hidden;aspect-ratio:4/3}
-video,canvas.xem{width:100%;height:100%;object-fit:cover;display:block}
-.khung .ve{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.khung{position:relative;background:#000;border-radius:16px;overflow:hidden;aspect-ratio:var(--ty-le,4/3);max-height:60vh}
+video,canvas.xem{width:100%;height:100%;object-fit:contain;display:block}
+.khung .ve{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
 .khung .lop{position:absolute;inset:0;pointer-events:none;border:3px dashed rgba(255,255,255,.55);border-radius:16px;margin:8%}
 .trang-thai{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
 .the{padding:6px 12px;border-radius:999px;font-size:14px;font-weight:600;background:#E3E8EC;color:var(--phu)}
@@ -75,6 +75,7 @@ img.kq{width:100%;border-radius:14px;display:block}
     <span class="the" id="k-ma">Mã ArUco</span>
     <span class="the" id="k-ngang">Nằm ngang</span>
   </div>
+  <p class="phu" id="k-thieu" style="margin-top:6px"></p>
   <button class="nut" id="bat-cam">Bật camera</button>
   <div class="tien-do"><i id="td"></i></div>
 </section>
@@ -113,8 +114,9 @@ img.kq{width:100%;border-radius:14px;display:block}
 
 <section class="man" id="man-cd">
   <h1>Cài đặt</h1>
-  <div class="hang"><span>Phiên bản app</span><b>0.4</b></div>
+  <div class="hang"><span>Phiên bản app</span><b id="cd-pb">—</b></div>
   <div class="hang"><span>Model đếm</span><b id="cd-model">chưa tải</b></div>
+  <div class="hang"><span>Camera</span><b id="cd-cam">chưa bật</b></div>
   <div class="hang"><span>Hiệu chuẩn khay</span><b id="cd-hc">chưa có</b></div>
   <div class="hang"><span>Cỡ mã ArUco</span><b><select id="cd-ma-mm" style="font:inherit;padding:6px;border-radius:8px"><option value="25">25 mm (in A4)</option><option value="17">17 mm (sticker)</option><option value="20">20 mm</option></select></b></div>
   <button class="nut" id="cd-hieu-chuan">Hiệu chuẩn từ khay trống (đang bật camera)</button>
