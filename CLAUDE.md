@@ -1,10 +1,22 @@
 > **NGUYÊN TẮC CỐ ĐỊNH — ĐỌC TRƯỚC KHI SỬA BẤT CỨ THỨ GÌ**
 >
-> **Người dùng chỉ làm 3 việc: chọn loại con → bấm CHỤP → bấm LƯU.**
+> **ĐÓNG BĂNG TÍNH NĂNG (từ 06/09/2026). Từ giờ CHỈ sửa lỗi và làm app chạy ổn.
+> Không thêm tính năng mới, kể cả khi thấy "tiện tay làm luôn".**
+>
+> **Một luồng duy nhất: chọn con → CHỤP → số → tự lưu.**
 >
 > **Không có nút sửa, hoàn tác, xóa nghi đôi, chỉnh hệ số, chọn model trong luồng thường.
 > Mọi xử lý là tự động.** Mọi thứ chỉnh tay nằm sau Cài đặt > Nâng cao > "Chế độ kiểm thử",
 > mặc định TẮT. Thêm bất kỳ nút nào vào luồng chụp là vi phạm nguyên tắc này.
+>
+> **KHÔNG LÀM** (đã chốt, đừng đề xuất lại):
+> - trang `/chu`
+> - chế độ công nhân
+> - "Đếm từ ảnh" — chưa làm
+>
+> **Còn lệch giữa nguyên tắc và code:** nguyên tắc ghi "tự lưu" nhưng màn kết quả hiện vẫn có
+> nút **[Lưu vào lô]** phải bấm. Chưa đổi vì tự lưu sẽ nhét cả những tấm chụp hỏng vào lô mà
+> không còn đường bỏ — cần Hải Đăng chốt trước.
 
 # FarmX Counter — web-app đếm con giống (Tray v1)
 
