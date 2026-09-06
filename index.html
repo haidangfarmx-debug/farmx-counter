@@ -58,13 +58,40 @@ img.kq{width:100%;border-radius:14px;display:block}
 .chon-to button{font:inherit;font-size:23px;font-weight:700;padding:28px 16px;border-radius:18px;border:2px solid var(--xanh-nhat);background:#fff;color:var(--chu)}
 .chon-to button:active{background:var(--xanh-nhat);border-color:var(--xanh)}
 .chip-loai{position:absolute;left:10px;top:10px;z-index:2;background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:999px;padding:9px 15px;font:inherit;font-size:15px;font-weight:600}
-.bao{position:absolute;left:10px;right:10px;bottom:10px;z-index:2;background:rgba(179,38,30,.92);color:#fff;padding:11px 14px;border-radius:12px;font-size:16px;font-weight:600;text-align:center;display:none}
-.bao.hien{display:block}
+.bang{position:absolute;left:8px;right:8px;bottom:8px;z-index:2;background:rgba(0,0,0,.62);color:#fff;padding:10px 12px;border-radius:12px;text-align:center}
+.bang-chinh{font-size:18px;font-weight:700;line-height:1.25}
+.bang-phu{font-size:13px;line-height:1.3;opacity:.9;margin-top:3px}
+.bang.ok{background:rgba(21,110,63,.88)}
+.bang.canh{background:rgba(150,98,20,.92)}
+.bang.loi{background:rgba(168,32,25,.94)}
+.khung{cursor:pointer}
+/* A. 3 o kiem truoc khi chup */
+.kiem{display:flex;flex-direction:column;gap:6px;margin:12px 0 4px}
+.o{padding:9px 13px;border-radius:10px;font-size:15px;font-weight:600;line-height:1.3}
+.o-ok{background:#DDF3E6;color:var(--ok)}
+.o-loi{background:#F9DEDC;color:var(--loi)}
+/* B. thanh 4 buoc khi chup */
+.buoc{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:7px}
+.buoc li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:#EEF3F6;color:var(--phu);font-size:16px;font-weight:600}
+.buoc li i{flex:0 0 22px;height:22px;border-radius:50%;border:3px solid #C3CED6;display:block}
+.buoc li em{font-style:normal;font-size:14px;font-weight:600;opacity:.9;margin-left:auto;text-align:right}
+.buoc li.chay{background:var(--xanh-nhat);color:var(--xanh)}
+.buoc li.chay i{border-color:#BBDEFB;border-top-color:var(--xanh);animation:xoay .8s linear infinite}
+.buoc li.xong{background:#DDF3E6;color:var(--ok)}
+.buoc li.xong i{border:0;background:var(--ok);position:relative}
+.buoc li.xong i::after{content:"✓";position:absolute;inset:0;color:#fff;font-size:15px;line-height:22px;text-align:center}
+.buoc li.loi{background:#F9DEDC;color:var(--loi)}
+.buoc li.loi i{border:0;background:var(--loi);position:relative}
+.buoc li.loi i::after{content:"✗";position:absolute;inset:0;color:#fff;font-size:15px;line-height:22px;text-align:center}
+.kq-buoc{font-size:16px;font-weight:700;color:var(--phu);margin-top:4px}
+.kq-buoc.ok{color:var(--ok)}.kq-buoc.loi{color:var(--loi)}
 .chup-vung{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px}
 .nut-tron{width:92px;height:92px;border-radius:50%;padding:0;border:4px solid var(--chu);background:transparent;display:grid;place-items:center}
 .nut-tron i{display:block;width:70px;height:70px;border-radius:50%;background:#E53935;transition:transform .12s}
 .nut-tron:active i{transform:scale(.88)}
-.nut-tron[disabled]{opacity:.6}
+.nut-tron[disabled]{opacity:1}
+.nut-tron.tat{border-color:#B0BEC5}
+.nut-tron.tat i{background:#B0BEC5}
 .nut-tron.chay{border-color:var(--phu)}
 .nut-tron.chay i{width:54px;height:54px;background:none;border:6px solid var(--xanh-nhat);border-top-color:var(--xanh);border-radius:50%;animation:xoay .9s linear infinite}
 @keyframes xoay{to{transform:rotate(360deg)}}
@@ -96,16 +123,30 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
     <video id="cam" playsinline muted autoplay></video>
     <canvas id="ve" class="ve"></canvas>
     <button class="chip-loai" id="chip-loai">Tôm PL</button>
-    <p class="bao" id="bao"></p>
+    <div class="bang" id="bang">
+      <p class="bang-chinh" id="bang-chinh">Đang bật camera…</p>
+      <p class="bang-phu" id="bang-phu"></p>
+    </div>
+  </div>
+  <div class="kiem" id="kiem">
+    <span class="o" id="o-cam">Camera</span>
+    <span class="o" id="o-khay">Khay</span>
+    <span class="o" id="o-model">Model</span>
   </div>
   <div class="chup-vung">
     <button class="nut-tron" id="chup" aria-label="Chụp"><i></i></button>
     <p class="chup-chu" id="chup-chu">Chụp</p>
   </div>
-  <button class="nut" id="bat-cam" style="display:none">Bật camera</button>
+  <ol class="buoc" id="buoc" style="display:none">
+    <li id="b1"><i></i><span>1 Chụp ảnh</span><em></em></li>
+    <li id="b2"><i></i><span>2 Tìm khay</span><em></em></li>
+    <li id="b3"><i></i><span>3 Nắn ảnh</span><em></em></li>
+    <li id="b4"><i></i><span>4 Đếm</span><em></em></li>
+  </ol>
 </section>
 
 <section class="man" id="man-kq">
+  <p class="kq-buoc" id="kq-buoc"></p>
   <div class="so-to" id="kq-so"><span id="so-con">0</span><small>con</small></div>
   <p class="kq-loi" id="kq-loi" style="display:none"></p>
   <p class="phu" id="kq-phu"></p>

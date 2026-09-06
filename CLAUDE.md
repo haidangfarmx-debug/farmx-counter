@@ -54,3 +54,16 @@ PWA chạy trên điện thoại, mở bằng link. Đếm tôm PL / tôm ương
    - Dưới 3 mã: thay số bằng "Không thấy khay — chỉnh lại điện thoại", chỉ còn nút [Chụp lại].
 
 Không thêm bước, không thêm nút vào luồng này. Thông số kỹ thuật nằm trong Cài đặt > Nâng cao (đóng sẵn).
+
+## Quy tac giao dien (v1.1) — khong duoc pha
+- **Khong bao gio de man den im lang.** Mọi trạng thái phải có chữ trên video trong 1 giây:
+  `trangThai(chính, phụ, kiểu)` — "Đang bật camera…", "Không mở được camera — chạm để thử lại"
+  (chạm vào `.khung` xin lại quyền), "Thấy n/6 mã", "Lỗi: …".
+- **Mọi cú bấm phải có phản hồi.** Nút chụp xám + ghi lý do ngay dưới nút khi không chụp được.
+  Bấm được thì rung + vòng xoay + "Đang đếm…" trước mọi việc nặng.
+- **Không nuốt lỗi.** `vongKiemTra` và `demKhay` đều bọc try/catch và đẩy `Lỗi: …` ra màn hình.
+- `nhuong()` chạy đua `requestAnimationFrame` với `setTimeout(50)`: rAF **không chạy khi tab ẩn
+  hoặc màn hình tắt**, dùng rAF trần sẽ treo cứng cả luồng chụp.
+- 3 ô kiểm `veKiem(n)`: Camera / Khay / Model. Nút chỉ sáng khi Camera và Khay xanh.
+  **Khay xanh = đủ 6 mã** — thiếu mã thì vùng đếm co lại, số giữa các lần chụp hết so sánh được.
+- Thanh 4 bước `moBuoc()`: mỗi bước hiện ít nhất 300 ms. Kết quả ghi "Xong 4/4" / "Dừng ở bước n/4".
