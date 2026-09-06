@@ -34,7 +34,7 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0;
-const PHIEN_BAN = "1.2";
+const PHIEN_BAN = "1.2.1";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -535,6 +535,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 
