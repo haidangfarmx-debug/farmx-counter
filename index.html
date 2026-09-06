@@ -50,7 +50,9 @@ input,textarea{width:100%;padding:14px;border:2px solid #CBD5DD;border-radius:12
 .ds .muc small{color:var(--phu);display:block;margin-top:4px}
 .trong{text-align:center;color:var(--phu);padding:40px 10px}
 .thong-bao{position:fixed;top:70px;left:16px;right:16px;background:var(--chu);color:#fff;padding:14px 16px;border-radius:12px;font-size:15px;display:none;z-index:9}
-img.kq{width:100%;border-radius:14px;display:block}
+.kq{width:100%;border-radius:14px;display:block;touch-action:manipulation}
+.kq-sua{font-size:17px;font-weight:700;color:var(--chu);margin-top:8px;text-align:center}
+.kq-chi{font-size:13px;color:var(--phu);margin-top:4px;text-align:center}
 .tien-do{height:6px;background:#E3F2FD;border-radius:3px;overflow:hidden;margin-top:10px}
 .tien-do i{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
 /* --- luong chup 4 buoc --- */
@@ -160,8 +162,11 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
   <div class="so-to" id="kq-so"><span id="so-con">0</span><small>con</small></div>
   <p class="kq-loi" id="kq-loi" style="display:none"></p>
   <p class="phu" id="kq-phu"></p>
-  <img class="kq" id="anh-kq" alt="">
+  <canvas class="kq" id="anh-kq"></canvas>
+  <p class="kq-chi" id="kq-chi"></p>
+  <p class="kq-sua" id="kq-sua"></p>
   <p class="kq-gop" id="kq-gop"></p>
+  <button class="nut phu2" id="hoan-tac">Hoàn tác</button>
   <div class="doi-nut">
     <button class="nut" id="chup-lai">Chụp tiếp</button>
     <button class="nut ok" id="them-khay">Lưu vào lô</button>
@@ -174,6 +179,7 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
   <div class="hang"><span>Số khay</span><b id="lo-khay">0</b></div>
   <div class="hang"><span>Loại con</span><b id="lo-loai">—</b></div>
   <div class="hang"><span>Từng khay</span><b id="lo-tung">—</b></div>
+  <div class="hang"><span>Máy đếm → chốt</span><b id="lo-sua">—</b></div>
   <input id="lo-khach" placeholder="Tên khách (không bắt buộc)">
   <textarea id="lo-ghi" rows="2" placeholder="Ghi chú"></textarea>
   <button class="nut" id="lo-them">Đếm khay tiếp</button>

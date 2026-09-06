@@ -118,3 +118,16 @@ Chạm vào ô Model để tải lại khi hỏng.
 - `sw.js` cache-trước cho cả `/model/` và `/lib/ort/` — nếu để rơi vào nhánh mạng-trước thì mỗi
   lần mở app sẽ tải lại hơn 30 MB.
 - Tốc độ đo được: webgpu ~290 ms/khung, wasm ~1.300–2.900 ms/khung.
+
+## Sửa tay ở màn kết quả (v1.7)
+`suaTay = { anhNan, hop:[{b,xoa,them}], lichSu, soMay }`. `#anh-kq` nay là **canvas**, không phải img.
+- Chạm vào khung → `xoa = true` (đỏ mờ). Chạm lại khung đã xoá → phục hồi. Chạm chỗ trống → thêm
+  khung xanh dương cỡ trung vị. "Hoàn tác" lần ngược `lichSu`.
+- Khung xoá **không bị gỡ khỏi mảng**, chỉ đánh cờ → chỉ số ổn định, hoàn tác không lệch.
+  Khung thêm luôn push cuối mảng nên `splice` khi hoàn tác luôn đúng phần tử.
+- Chọn khung ảnh có số hộp **bằng đúng trung vị** để hiện, không lấy khung cuối — trước v1.7 số hiện
+  là trung vị mà hộp vẽ ra lại của khung cuối, hai thứ có thể lệch nhau.
+- Lô lưu **cả hai dãy**: `khay` (số chốt, dùng cộng tổng) và `khayMay` (số máy đếm). Bản ghi lô thêm
+  `so_con_may` và `so_sua`. `counter_anh_gop` gửi đúng cặp `so_may_dem` / `so_sau_sua` — trước đây
+  gửi cùng một số cho cả hai cột nên vô dụng cho việc train.
+- **Ảnh góp là ảnh nắn SẠCH**, không vẽ khung sửa tay lên, để còn dùng làm dữ liệu train.

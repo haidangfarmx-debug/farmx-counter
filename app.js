@@ -60,7 +60,8 @@ const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="t
 // ---- trang thai ----
 let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session = null, modelVer = null;
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
-const PHIEN_BAN = "1.6.1";
+let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
+const PHIEN_BAN = "1.7";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -553,20 +554,25 @@ async function demKhay(soKhung){
 
     // 4. dem
     await B.batDau(3); den=4;
-    const ketQua=[], truocGop=[]; let anhCuoi=nan[nan.length-1].canvas;
+    const ketQua=[], truocGop=[], khungKQ=[];
     if(session){ for(const r of nan){
       const bx=await demYolo(r.canvas);
       const gop=gopCum(bx, heSoGop);
       truocGop.push(bx.length); ketQua.push(gop.length);
-      anhCuoi=veBox(r.canvas, gop);
+      khungKQ.push({canvas:r.canvas, boxes:gop});   // giu canvas SACH, ve khung luc hien
     } }
     const tv=a=>{ const x=a.slice().sort((p,q)=>p-q); return x[Math.floor(x.length/2)]; };
     let so=null, soTruoc=null;
     if(ketQua.length){ so=tv(ketQua); soTruoc=tv(truocGop); }
+    // Chon dung khung co so khung BANG trung vi, khong lay khung cuoi: nguoi dung sua tay
+    // tren anh nao thi so hien phai la so cua anh do.
+    const chon = (ketQua.length && khungKQ.find(k=>k.boxes.length===so))
+              || { canvas: nan[nan.length-1].canvas, boxes: [] };
     if(session) await B.xong(3, `${ketQua.join(", ")}`);
     else await B.loi(3, "chưa có model");
     const cuoi=nan[nan.length-1];
-    khayVua={ so, anh:anhCuoi.toDataURL("image/jpeg",0.8), loai:loaiCon, soMa:cuoi.soMa, khung:ketQua, khungTruoc:truocGop };
+    khayVua={ so, loai:loaiCon, soMa:cuoi.soMa, khung:ketQua, khungTruoc:truocGop };
+    moSuaTay(chon.canvas, chon.boxes, so===null?0:so);
     raKetQua({so, soTruoc, soMa:cuoi.soMa, vung:cuoi.vung, saiSo:cuoi.saiSo, soKhung:khung.length, den:session?4:3});
   } catch(e){
     const m = (e && e.message) || String(e);
@@ -579,15 +585,77 @@ async function demKhay(soKhung){
     setTimeout(()=>{ if(!dangChup) B.dong(); }, 1200);
   }
 }
+// ---- sua tay tren anh ket qua ----
+// Cham vao khung -> xoa (do mo, so tru 1). Cham cho trong -> them mot con (khung xanh duong).
+// Cham lai vao khung da xoa -> phuc hoi. Hoan tac lan nguoc lich su.
+// Khung XOA khong bi go khoi mang, chi danh co -> chi so on dinh, hoan tac khong lech.
+function moSuaTay(anhNan, boxes, soMay){
+  suaTay = { anhNan, hop: boxes.map(b=>({b:b.slice(), xoa:false, them:false})), lichSu:[], soMay };
+  veSuaTay();
+}
+const soChot = () => suaTay ? suaTay.hop.filter(h=>!h.xoa).length : 0;
+function coKhung(){
+  const c=suaTay.hop.filter(h=>!h.them).map(h=>Math.max(h.b[2]-h.b[0], h.b[3]-h.b[1])).sort((a,b)=>a-b);
+  return c.length ? c[Math.floor(c.length/2)] : Math.max(12, Math.round(suaTay.anhNan.width/25));
+}
+function veSuaTay(){
+  if(!suaTay) return;
+  const c=$("#anh-kq"), a=suaTay.anhNan;
+  if(c.width!==a.width || c.height!==a.height){ c.width=a.width; c.height=a.height; }
+  const g=c.getContext("2d");
+  g.clearRect(0,0,c.width,c.height); g.drawImage(a,0,0);
+  g.lineWidth=Math.max(2, Math.round(c.width/300));
+  for(const h of suaTay.hop){
+    const [x1,y1,x2,y2]=h.b, w=x2-x1, hh=y2-y1;
+    if(h.xoa){ g.fillStyle="rgba(179,38,30,.35)"; g.fillRect(x1,y1,w,hh); g.strokeStyle="#B3261E"; }
+    else g.strokeStyle = h.them ? "#1976D2" : "#22c55e";
+    g.strokeRect(x1,y1,w,hh);
+  }
+  const may=suaTay.soMay, chot=soChot(), d=chot-may;
+  $("#so-con").textContent = chot.toLocaleString("vi");
+  $("#kq-sua").textContent = `Máy: ${may} · Sửa: ${d>0?"+":d<0?"−":"±"}${Math.abs(d)} · Chốt: ${chot}`;
+  $("#hoan-tac").disabled = !suaTay.lichSu.length;
+}
+$("#anh-kq").onclick = e => {
+  if(!suaTay) return;
+  const c=$("#anh-kq"), r=c.getBoundingClientRect();
+  if(!r.width) return;
+  const x=(e.clientX-r.left)*c.width/r.width, y=(e.clientY-r.top)*c.height/r.height;
+  let iTim=-1, nhoNhat=Infinity;
+  suaTay.hop.forEach((h,i)=>{ const [x1,y1,x2,y2]=h.b;
+    if(x>=x1 && x<=x2 && y>=y1 && y<=y2){ const s=(x2-x1)*(y2-y1); if(s<nhoNhat){ nhoNhat=s; iTim=i; } } });
+  if(iTim>=0){
+    const h=suaTay.hop[iTim];
+    suaTay.lichSu.push({ l: h.xoa ? "phuc" : "xoa", i: iTim });
+    h.xoa = !h.xoa;
+  } else {
+    const k=coKhung();
+    suaTay.hop.push({ b:[x-k/2, y-k/2, x+k/2, y+k/2, 1], xoa:false, them:true });
+    suaTay.lichSu.push({ l:"them", i:suaTay.hop.length-1 });
+  }
+  if(navigator.vibrate) navigator.vibrate(20);
+  veSuaTay();
+};
+$("#hoan-tac").onclick = () => {
+  if(!suaTay || !suaTay.lichSu.length) return;
+  const v=suaTay.lichSu.pop();
+  if(v.l==="them")      suaTay.hop.splice(v.i,1);
+  else if(v.l==="xoa")  suaTay.hop[v.i].xoa=false;
+  else                  suaTay.hop[v.i].xoa=true;
+  veSuaTay();
+};
+
 // ---- ket qua ----
 function raKetQua(r){
   const soEl=$("#kq-so"), loiEl=$("#kq-loi"), phuEl=$("#kq-phu"), anh=$("#anh-kq"),
-        luu=$("#them-khay"), tiep=$("#chup-lai"), db=$("#kq-buoc");
+        luu=$("#them-khay"), tiep=$("#chup-lai"), db=$("#kq-buoc"),
+        ht=$("#hoan-tac"), chi=$("#kq-chi");
   const den = r.den==null ? 4 : r.den;
   if(r.loi){
     db.className="kq-buoc loi"; db.textContent=`Dừng ở bước ${den}/4`;
     soEl.style.display="none"; loiEl.style.display=""; loiEl.textContent=r.loi;
-    phuEl.textContent=""; $("#kq-gop").textContent=""; anh.removeAttribute("src"); anh.style.display="none";
+    phuEl.textContent=""; $("#kq-gop").textContent=""; $("#kq-sua").textContent=""; chi.textContent="";
+    anh.style.display="none"; ht.style.display="none"; suaTay=null;
     luu.style.display="none"; tiep.textContent="Chụp lại";
   } else {
     const heto = r.so!==null;
@@ -597,7 +665,10 @@ function raKetQua(r){
     $("#so-con").textContent = heto ? r.so.toLocaleString("vi") : "—";
     phuEl.textContent = heto ? `Trung vị ${khayVua.khung.length}/${r.soKhung} khung · thấy ${r.soMa} mã`
                              : "Model đang cập nhật — đã nắn khay, chưa ra số";
-    anh.src=khayVua.anh; anh.style.display="";
+    anh.style.display="";
+    ht.style.display = heto ? "" : "none";
+    chi.textContent = heto ? "Chạm vào con để bỏ · chạm chỗ trống để thêm" : "";
+    if(!heto) $("#kq-sua").textContent="";
     $("#kq-gop").textContent = (heto && r.soTruoc!=null)
       ? `Trước gộp ${r.soTruoc.toLocaleString("vi")} · sau gộp ${r.so.toLocaleString("vi")} (hệ số ${heSoGop})`
       : "";
@@ -609,12 +680,28 @@ function raKetQua(r){
   hien("man-kq");
 }
 $("#chup-lai").onclick=()=>hien("man-dem");
-$("#them-khay").onclick=()=>{ if(!loHienTai) loHienTai={ id:crypto.randomUUID(), thoi_gian:new Date().toISOString(), loai_con:loaiCon, khay:[], anh:[], khach:"", ghi_chu:"" };
-  loHienTai.khay.push(khayVua.so); loHienTai.anh.push(khayVua.anh); luuNhap(); tb("Đã thêm khay vào lô."); hien("man-dem"); };
+$("#them-khay").onclick=()=>{
+  if(!suaTay) return;
+  if(!loHienTai) loHienTai={ id:crypto.randomUUID(), thoi_gian:new Date().toISOString(), loai_con:loaiCon,
+                             khay:[], khayMay:[], anh:[], khach:"", ghi_chu:"" };
+  loHienTai.khayMay ||= [];                      // lo nhap cu tu ban truoc chua co truong nay
+  const may=suaTay.soMay, chot=soChot();
+  loHienTai.khay.push(chot);                     // so CHOT dung de cong tong lo
+  loHienTai.khayMay.push(may);                   // so MAY dem, giu de doi chieu va train sau
+  // Anh gop la anh nan SACH, khong ve khung sua tay len — de con dung lam du lieu train.
+  loHienTai.anh.push(suaTay.anhNan.toDataURL("image/jpeg",0.85));
+  luuNhap();
+  tb(may===chot ? "Đã thêm khay vào lô." : `Đã thêm khay (sửa tay ${chot-may>0?"+":"−"}${Math.abs(chot-may)}).`);
+  hien("man-dem");
+};
 
 // ---- lo ----
 function veLo(){ const l=loHienTai; $("#lo-tong").textContent=l?l.khay.reduce((a,b)=>a+b,0).toLocaleString("vi"):"0";
   $("#lo-khay").textContent=l?l.khay.length:"0"; $("#lo-loai").textContent=l?tenLoai(l.loai_con):"—"; $("#lo-tung").textContent=l?l.khay.join(" + "):"—";
+  if(l && l.khayMay && l.khayMay.length){
+    const may=l.khayMay.reduce((a,b)=>a+b,0), chot=l.khay.reduce((a,b)=>a+b,0), d=chot-may;
+    $("#lo-sua").textContent = d ? `${may} → ${chot} (sửa tay ${d>0?"+":"−"}${Math.abs(d)})` : `${may} (không sửa tay)`;
+  } else $("#lo-sua").textContent="—";
   if(l){ $("#lo-khach").value=l.khach; $("#lo-ghi").value=l.ghi_chu; } }
 $("#lo-them").onclick=()=>hien("man-dem");
 $("#lo-huy").onclick=()=>{ if(confirm("Hủy lô đang đếm?")){ loHienTai=null; localStorage.removeItem("loNhap"); daNhacLo=false; hien("man-dem"); } };
@@ -622,7 +709,9 @@ $("#lo-khach").oninput=e=>{ if(loHienTai){ loHienTai.khach=e.target.value; luuNh
 $("#lo-ghi").oninput=e=>{ if(loHienTai){ loHienTai.ghi_chu=e.target.value; luuNhap(); } };
 function luuNhap(){ localStorage.loNhap=JSON.stringify(loHienTai); }
 $("#lo-xong").onclick=async()=>{ const l=loHienTai; if(!l||!l.khay.length) return tb("Chưa có khay nào."); daNhacLo=false;   // lo sau nhac lai
-  l.so_con=l.khay.reduce((a,b)=>a+b,0); l.model_ver=modelVer; await dbLuu(l); loHienTai=null; localStorage.removeItem("loNhap");
+  l.so_con=l.khay.reduce((a,b)=>a+b,0);
+  l.so_con_may=(l.khayMay||[]).reduce((a,b)=>a+b,0);
+  l.so_sua=l.so_con-l.so_con_may; l.model_ver=modelVer; await dbLuu(l); loHienTai=null; localStorage.removeItem("loNhap");
   tb("Đã lưu lô. Báo cáo PDF: v1.1"); dongBo(l); hien("man-ls"); };
 
 // ---- IndexedDB ----
@@ -644,7 +733,7 @@ async function dongBo(l){ if(!navigator.onLine) return; try{
 async function gopAnh(l){ for(let i=0;i<l.anh.length;i++){ const blob=await (await fetch(l.anh[i])).blob(); const path=`${thietBiId}/${l.id}_${i}.jpg`;
   const up=await fetch(`${SUPABASE_URL}/storage/v1/object/counter-anh/${path}`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"image/jpeg"},body:blob});
   if(up.ok) await fetch(SUPABASE_URL+"/rest/v1/counter_anh_gop",{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},
-    body:JSON.stringify({thiet_bi_id:thietBiId,lo_id:l.id,loai_con:l.loai_con,so_may_dem:l.khay[i],so_sau_sua:l.khay[i],model_ver:l.model_ver,duong_dan:path})}); } }
+    body:JSON.stringify({thiet_bi_id:thietBiId,lo_id:l.id,loai_con:l.loai_con,so_may_dem:(l.khayMay&&l.khayMay[i]!=null)?l.khayMay[i]:l.khay[i],so_sau_sua:l.khay[i],model_ver:l.model_ver,duong_dan:path})}); } }
 
 // ---- dung lai mat phang khay (dung boi matPhang) ----
 function apH(H,p){ const d=H[6]*p[0]+H[7]*p[1]+H[8];
@@ -691,6 +780,7 @@ if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(
 taiModel();
 capNhatLoai();
 hien(loaiCon ? "man-dem" : "man-loai");
+
 
 
 
