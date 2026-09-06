@@ -97,9 +97,13 @@ có IoU nhỏ nên NMS không dọn được — `gopCum()` mới dọn được
 - Màn kết quả hiện "Trước gộp X · sau gộp Y (hệ số Z)" chữ nhỏ xám dưới ảnh.
 
 ## onnxruntime-web tự host (v1.5)
-`lib/ort/`: `ort.webgpu.min.js` (313 KB) + `ort-wasm-simd-threaded.jsep.mjs` (45 KB) +
-`ort-wasm-simd-threaded.jsep.wasm` (21,3 MB). Bản webgpu dùng chung một file wasm cho cả
-hai EP nên chỉ phải host một file nặng. **Không còn CDN nào trong repo.**
+`lib/ort/` host **hai bộ**, chọn theo `navigator.gpu` (bảng `ORT_BO`):
+- có WebGPU → `ort.webgpu.min.js` + `ort-wasm-simd-threaded.jsep.{mjs,wasm}` (**21,3 MB**)
+- không có → `ort.wasm.min.js` + `ort-wasm-simd-threaded.{mjs,wasm}` (**11,0 MB**)
+Máy Android không WebGPU khỏi phải tải bản 21 MB. **Không còn CDN nào trong repo.**
+`taiCoTienDo()` tải sẵn file .wasm bằng stream để báo tiến độ — ORT tự fetch thì không hook được;
+tải sẵn xong ORT lấy lại từ cache. Timeout 90 s bằng AbortController + Promise.race.
+Chạm vào ô Model để tải lại khi hỏng.
 - `ort.env.wasm.wasmPaths` phải là **URL tuyệt đối** (`new URL("./lib/ort/", document.baseURI).href`).
   ORT giải wasmPaths tương đối với chính file `ort.webgpu.min.js`, đưa `"./lib/ort/"` vào sẽ thành
   `/lib/ort/lib/ort/…` rồi 404. Đây đúng là lỗi làm model chết trên máy khác.
