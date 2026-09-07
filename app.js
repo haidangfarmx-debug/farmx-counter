@@ -38,6 +38,9 @@ let heSoGop = docHeSo();
 const batGopTM = () => (localStorage.gopThongMinh ?? "1") === "1";
 // Che do kiem thu: MAC DINH TAT. Nguoi dung chi lam 3 viec — chon loai con, CHUP, LUU.
 // Bat len moi hien sua tay tren anh ket qua va cac nut chinh trong Nang cao.
+// EP TAT tu v2.3.1: nut bat/tat da an khoi giao dien, may nao tung bat se ket o
+// che do kiem thu (KHONG tu luu lo) ma khong con cach tat. Xoa co moi lan khoi dong.
+try{ localStorage.removeItem("kiemThu"); }catch(e){}
 const batKiemThu = () => localStorage.kiemThu === "1";
 const SO_DIEM_XET = 20;    // so diem lay doc doan noi hai tam
 const TY_LE_LIEN  = 0.8;   // >= 80% diem khac nen ro -> cung mot than
@@ -71,7 +74,7 @@ let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session =
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let luuVua = null;   // { moiTao } — lan tu luu gan nhat, de con bo lai duoc
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "2.3";
+const PHIEN_BAN = "2.3.1";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
