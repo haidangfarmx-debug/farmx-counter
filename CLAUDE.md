@@ -26,7 +26,7 @@ PWA chạy trên điện thoại, mở bằng link. Đếm tôm PL / tôm ương
 
 ## Kiến trúc (giữ nguyên)
 - Static site, KHÔNG build step: `index.html` + `app.js` + `sw.js` + `manifest.json` + `icon.svg` ở gốc repo. Cloudflare Pages deploy thẳng (build command trống, output `/`).
-- AI chạy trong trình duyệt, KHÔNG dùng OpenCV.js (đã bỏ ở v0.6, nó nặng 10 MB). Đọc mã ArUco bằng js-aruco2 tự host trong `lib/` (`cv.js` + `aruco.js` + `aruco_4x4_1000.js`, tổng 54 KB); homography và nắn khay tự viết thuần JS trong `app.js`. ONNX Runtime Web vẫn tải từ jsdelivr, chỉ khi có model. Model YOLO11n ONNX tự host trong `model/`: `dem_v01.onnx` (mặc định) và `dem_v0.onnx` (giữ để đối chiếu). Cùng kiến trúc: 10,6 MB, opset 12, input `[1,3,1280,1280]`, output `[1,5,33600]`, 1 class `shrimp`. Chọn bản nào trong Cài đặt > Nâng cao (`localStorage.modelChon`).
+- AI chạy trong trình duyệt, KHÔNG dùng OpenCV.js (đã bỏ ở v0.6, nó nặng 10 MB). Đọc mã ArUco bằng js-aruco2 tự host trong `lib/` (`cv.js` + `aruco.js` + `aruco_4x4_1000.js`, tổng 54 KB); homography và nắn khay tự viết thuần JS trong `app.js`. ONNX Runtime Web vẫn tải từ jsdelivr, chỉ khi có model. Model YOLO11n ONNX tự host trong `model/`: `dem_v02.onnx` (mới nhất), `dem_v01.onnx` (mặc định) và `dem_v0.onnx` (giữ để đối chiếu). Cùng kiến trúc: 10,6 MB, opset 12, input `[1,3,1280,1280]`, output `[1,5,33600]`, 1 class `shrimp`. Chọn bản nào trong Cài đặt > Nâng cao (`localStorage.modelChon`).
 - Supabase project `farmx-web` (xofhpbfiuolkcbwbxume): bảng `counter_lo`, `counter_anh_gop`, `counter_model`; bucket `counter-anh` (riêng tư), `counter-model` (public). Anon key nằm trong `app.js`. Chỉ ghi lô + ảnh góp opt-in; không xử lý AI trên server.
 - Lưu cục bộ: IndexedDB `farmx` store `lo`; nháp lô trong localStorage `loNhap`.
 - Service worker: file cùng origin = mạng trước cache sau; thư viện CDN = cache trước. Đổi tên `CACHE` trong `sw.js` khi phát hành.
@@ -93,7 +93,9 @@ Không thêm bước, không thêm nút vào luồng này. Thông số kỹ thu�
 - Thanh 4 bước `moBuoc()`: mỗi bước hiện ít nhất 300 ms. Kết quả ghi "Xong 4/4" / "Dừng ở bước n/4".
 
 ## Model
-- `model/dem_v01.onnx` (mặc định) và `model/dem_v0.onnx` — YOLO11n từ Ultralytics 8.4.142, train imgsz 640 trên patch, export imgsz 1280. Hai file trùng dung lượng nhưng khác trọng số (SHA-256 khác, export 03:05 vs 06:08 ngày 6/9/2026).
+- `model/dem_v02.onnx` (mới nhất), `model/dem_v01.onnx` (mặc định) và `model/dem_v0.onnx` — YOLO11n từ Ultralytics 8.4.142, export imgsz 1280.
+- `dem_v01` và `dem_v0` train imgsz 640 trên patch; trùng dung lượng nhưng khác trọng số (SHA-256 khác, export 03:05 vs 06:08 ngày 6/9/2026).
+- `dem_v02` train 6/9/2026 bằng `scripts/train_v02.py` (40 epoch, imgsz 640, batch 32) trên dataset Roboflow + ảnh đảo màu + 2900 ảnh tôm vẽ tự sinh: mAP50 **0,982**, mAP50-95 **0,705**; sai số nền tối 10,9% / nền sáng 11,1% / tôm vẽ 13,1%. Chưa phải mặc định — chọn tay trong Cài đặt > Nâng cao.
 - Hậu xử lý trong `demYolo()` khớp `[1, 4+nc, N]`; không sửa gì khi đổi model cùng dạng.
 - Suy luận **2,5–3,2 s mỗi khung** trên wasm (đo trên Mac). Ba khung ≈ 8–10 s. Trên iPhone có WebGPU
   sẽ nhanh hơn; `executionProviders` đã để `["webgpu","wasm"]`.
@@ -114,7 +116,7 @@ có IoU nhỏ nên NMS không dọn được — `gopCum()` mới dọn được
   với cỡ con giống và độ phóng đại của ảnh nắn — không phải chỉnh khi đổi loại con.
 - Duyệt theo điểm giảm dần, giữ khung nếu nó không nằm trong ngưỡng của khung đã giữ. Nghĩa là
   một chuỗi khung sát nhau sẽ gộp hết về một.
-- Hệ số mặc định **riêng theo model** (`HE_SO_MD`): `dem_v01` = 1,2, `dem_v0` = 0,8. Model khác cho
+- Hệ số mặc định **riêng theo model** (`HE_SO_MD`): `dem_v02` = 0,8, `dem_v01` = 0,8, `dem_v0` = 0,8. Model khác cho
   ra khung to nhỏ khác nhau nên ngưỡng gộp phải khác. Chỉnh tay thì lưu riêng theo model trong
   `localStorage.heSoGopTheoModel` (JSON `{model: hệ số}`); đổi model là lấy lại hệ số của model đó,
   không dính hệ số vừa chỉnh cho model kia.
@@ -155,7 +157,7 @@ Chạm vào ô Model để tải lại khi hỏng.
 
 ## Nghi đếm đôi + phóng to (v1.8)
 - `HE_SO_NGHI = 1.5`: hai khung có tâm cách nhau < 1,5 × chiều dài trung vị → tô **cam** và nối
-  vạch mỏng. Đây là dải "còn lại" giữa `heSoGop` (1,2 với dem_v01) và 1,5 — `gopCum` đã gộp phần
+  vạch mỏng. Đây là dải "còn lại" giữa `heSoGop` (0,8) và 1,5 — `gopCum` đã gộp phần
   gần hơn rồi, nên khung cam là phần đáng ngờ nhưng chưa đủ chắc để tự gộp.
 - "Xóa hết nghi đôi" xoá một khung mỗi cặp (giữ khung điểm cao). Cả loạt là **một** mục
   `{l:"xoaNhieu", ds:[…]}` trong lịch sử → một lần Hoàn tác phục hồi hết.

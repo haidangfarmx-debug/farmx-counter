@@ -1,1 +1,8 @@
 .DS_Store
+
+# --- train cuc bo (scripts/train_v02.py) ---
+.venv/
+runs/
+risishrimp-count-1/
+*.pt
+__pycache__/
