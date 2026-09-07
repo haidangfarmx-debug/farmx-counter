@@ -15,7 +15,7 @@ let modelChon = MODEL_MD;   // UI chon model da an -> luon dung MODEL_MD
 // Don vi lam viec la "don vi ma": canh mot ma = MA_DV. Dem con giong khong can mm that,
 // nen moi kich thuoc deu tinh theo canh ma -> in ma 25 mm hay 17 mm deu chay dung nhu nhau.
 const MA_DV = 25;           // canh mot ma = 25 don vi
-const LE_DEM = 30;          // vung dem thut vao 30 don vi = 1,2 lan canh ma
+const LE_DEM = 30;          // KHONG CON DUNG tu v2.9 (vung do mo ra het mat khay). Giu lai de doi chieu.
 const CHE_MA = 35;          // o che quanh moi ma = 35 don vi = 1,4 lan canh ma
 const PX_DV = 3;            // px moi don vi trong anh nan (v2.6: 4 -> 3, anh nan ~909x684)
 const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan
@@ -56,13 +56,25 @@ const ORT_BO = {
   wasm:   { js:"./lib/ort/ort.wasm.min.js",   wasm:"./lib/ort/ort-wasm-simd-threaded.wasm",      ep:"wasm"   }
 };
 const MA_TOI_THIEU = 4;     // du 4 ma la chup duoc; duoi 4 thi nut xam
-// Vung dem: hinh chu nhat noi cac tam ma, thut vao LE_DEM moi phia.
+// Vung do: mo ra HET MAT KHAY (tu v2.9). Truoc day thut vao LE_DEM moi phia nen chi do
+// duoc 303x228 tren khay 500x350, mat ~39% dien tich va bo sot con o 4 goc.
+// Mo ra bang TI SO chu KHONG phai so don vi co dinh — day la diem quan trong: ti so khong
+// phu thuoc co ma in ra bao nhieu mm, nen van giu duoc tinh chat "in 25 mm hay 17 mm deu
+// chay dung nhu nhau". 6 ma trai 363x288 tren khay 500x350 => mep khay cach vien chu nhat
+// noi tam dung (500-363)/2/363 = 0,189 be rong va (350-288)/2/288 = 0,108 be cao.
+// GIA THIET: 6 ma dan doi xung, tam khay trung tam chu nhat noi tam ma.
+// Luu y: voi < 6 ma thi chu nhat noi tam nho di, mo ra theo ti so se NGOAI SUY nhieu hon
+// va vung do lech han — so dem giua cac lan chup cang khong so sanh duoc.
+const MO_NGANG = 0.189;     // mo moi ben theo be RONG chu nhat noi tam ma
+const MO_DOC   = 0.108;     // mo moi ben theo be CAO chu nhat noi tam ma
 function vungDem(tam){
   const v=Object.values(tam); if(v.length<3) return null;
   const xs=v.map(p=>p[0]), ys=v.map(p=>p[1]);
   const x0=Math.min(...xs), y0=Math.min(...ys), x1=Math.max(...xs), y1=Math.max(...ys);
-  const w=x1-x0-2*LE_DEM, h=y1-y0-2*LE_DEM;
-  return (w>0&&h>0) ? {x:x0+LE_DEM, y:y0+LE_DEM, w, h} : null;
+  const bw=x1-x0, bh=y1-y0;
+  if(!(bw>0 && bh>0)) return null;
+  const mx=bw*MO_NGANG, my=bh*MO_DOC;
+  return { x:x0-mx, y:y0-my, w:bw+2*mx, h:bh+2*my };
 }
 
 const $ = s => document.querySelector(s);
@@ -74,7 +86,8 @@ let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session =
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let luuVua = null;   // { moiTao } — lan tu luu gan nhat, de con bo lai duoc
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "2.8";
+let vungDo = null;   // vung do cua lan chup gan nhat, chi de ghi vao dau chim
+const PHIEN_BAN = "2.9";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -692,6 +705,7 @@ async function demKhay(soKhung){
     if(session) await B.xong(3, `${ketQua.join(", ")} · ${((performance.now()-tModel)/1000).toFixed(1)}s`);
     else await B.loi(3, "chưa có model");
     const cuoi=nan[nan.length-1];
+    vungDo=cuoi.vung;
     khayVua={ so, loai:loaiCon, soMa:cuoi.soMa, khung:ketQua, khungTruoc:truocGop };
     moSuaTay(chon.canvas, chon.boxes, so===null?0:so);
     raKetQua({so, soTruoc, soMa:cuoi.soMa, vung:cuoi.vung, saiSo:cuoi.saiSo, soKhung:khung.length, den:session?4:3});
@@ -809,7 +823,8 @@ function veSuaTay(){
   g.textAlign="right"; g.textBaseline="bottom";
   g.shadowColor="rgba(0,0,0,.35)"; g.shadowBlur=2;
   g.fillStyle="rgba(200,208,214,.72)";
-  g.fillText(`v${PHIEN_BAN} · ${MODEL_MD} · ${SO_O_DUNG} ô · ${a.width}×${a.height}`, c.width-8, c.height-6);
+  const dvVung = vungDo ? `${Math.round(vungDo.w)}×${Math.round(vungDo.h)} đv · ` : "";
+  g.fillText(`v${PHIEN_BAN} · ${MODEL_MD} · ${SO_O_DUNG} ô · ${dvVung}${a.width}×${a.height}`, c.width-8, c.height-6);
   g.restore();
   const may=suaTay.soMay, chot=soChot(), d=chot-may;
   $("#so-con").textContent = chot.toLocaleString("vi");
