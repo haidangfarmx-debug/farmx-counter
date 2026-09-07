@@ -78,6 +78,9 @@ function vungDem(tam){
 }
 
 const $ = s => document.querySelector(s);
+// Chi khoi dong app dem khi dang o index.html. app.js con duoc do-thu.html import lai
+// de dung ham hinh hoc; luc do KHONG gan handler va KHONG tai model 11 MB.
+const LA_APP = !!document.getElementById("chup");
 const tb = (m, ms=2500) => { const e=$("#tb"); e.textContent=m; e.style.display="block"; clearTimeout(tb.t); tb.t=setTimeout(()=>e.style.display="none", ms); };
 const the = (id, txt, cls) => { const e=$(id); e.textContent=txt; e.className="the "+(cls||""); };
 
@@ -87,11 +90,11 @@ let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo =
 let luuVua = null;   // { moiTao } — lan tu luu gan nhat, de con bo lai duoc
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
 let vungDo = null;   // vung do cua lan chup gan nhat, chi de ghi vao dau chim
-const PHIEN_BAN = "2.9";
+const PHIEN_BAN = "2.9.1";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
-document.querySelectorAll("nav button").forEach(b => b.onclick = () => hien(b.dataset.m));
+if(LA_APP) document.querySelectorAll("nav button").forEach(b => b.onclick = () => hien(b.dataset.m));
 function hien(m){
   document.querySelectorAll(".man").forEach(s=>s.classList.toggle("hien", s.id===m));
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("dang", b.dataset.m===m));
@@ -102,11 +105,11 @@ function hien(m){
 }
 // ---- buoc 1: dem con gi ----
 const tenLoai=v=>({pl:"Tôm PL",tom_uong:"Tôm ương",ca_giong:"Cá giống"})[v]||v;
-document.querySelectorAll("#loai button").forEach(b => b.onclick = () => {
+if(LA_APP) document.querySelectorAll("#loai button").forEach(b => b.onclick = () => {
   loaiCon=b.dataset.v; localStorage.loaiCon=loaiCon; capNhatLoai(); hien("man-dem"); });
 function capNhatLoai(){ const t=loaiCon?tenLoai(loaiCon):"—";
   $("#chip-loai").textContent=t; const e=$("#cd-loai"); if(e) e.textContent=t; }
-$("#chip-loai").onclick=()=>hien("man-loai");
+if(LA_APP) $("#chip-loai").onclick=()=>hien("man-loai");
 
 // ---- camera ----
 // ---- buoc 2: camera bat san ----
@@ -128,7 +131,7 @@ function nhacNho(){
   $("#nhac").classList.add("hien");
   clearTimeout(anNhac.t); anNhac.t = setTimeout(anNhac, 3000);
 }
-$("#nhac-x").onclick = e => { e.stopPropagation(); anNhac(); };
+if(LA_APP) $("#nhac-x").onclick = e => { e.stopPropagation(); anNhac(); };
 // Nut do: khong chup duoc thi xam + ghi ly do ngay duoi nut, khong im lang.
 function nutChup(bat, chu){
   const b=$("#chup"); b.disabled=!bat; b.classList.toggle("tat", !bat); $("#chup-chu").textContent=chu;
@@ -180,7 +183,7 @@ function moBuoc(){
     dong(){ veBuoc(null); }
   };
 }
-$(".khung").onclick = () => { if(!stream && !dangChup) batCamera(true); };
+if(LA_APP) $(".khung").onclick = () => { if(!stream && !dangChup) batCamera(true); };
 async function batCamera(nguoiBam){
   if(stream || batCamera.dangMo) return; batCamera.dangMo = true;
   trangThai("Đang bật camera…", ghiChuModel(), "");
@@ -499,7 +502,7 @@ async function taiModel(){
   }
 }
 // Cham vao o Model de tai lai khi hong.
-$("#o-model").onclick = () => { if(!session && !dangTaiModel) taiModel(); };
+if(LA_APP) $("#o-model").onclick = () => { if(!session && !dangTaiModel) taiModel(); };
 
 async function demYolo(canvas, imgsz=1280, conf=0.20, iou=0.25){
   // letterbox
@@ -648,7 +651,7 @@ function gopCum(boxes, heSo){
 function veBox(canvas,boxes){ const g=canvas.getContext("2d"); g.lineWidth=2; g.strokeStyle="#22c55e"; boxes.forEach(b=>g.strokeRect(b[0],b[1],b[2]-b[0],b[3]-b[1])); return canvas; }
 
 // ---- bam nut: thanh 4 buoc chay tuan tu, buoc nao xong tick ngay ----
-$("#chup").onclick = () => demKhay(3);
+if(LA_APP) $("#chup").onclick = () => demKhay(3);
 async function demKhay(soKhung){
   if(!stream || dangChup) return;
   dangChup=true;
@@ -882,7 +885,7 @@ function chamAnh(cxCss, cyCss){
   if(navigator.vibrate) navigator.vibrate(20);
   tinhNghiDoi(); tinhMau(); veSuaTay();
 }
-(function ganCuChi(){
+if(LA_APP) (function ganCuChi(){
   const c=$("#anh-kq"); const ngon=new Map(); let batDau=null, truoc=null;
   const hai=()=>{ const [a,b]=[...ngon.values()];
     return { d:Math.hypot(a.x-b.x,a.y-b.y), mx:(a.x+b.x)/2, my:(a.y+b.y)/2 }; };
@@ -917,8 +920,8 @@ function chamAnh(cxCss, cyCss){
   c.addEventListener("pointerup", het);
   c.addEventListener("pointercancel", e=>{ ngon.delete(e.pointerId); batDau=null; truoc=null; });
 })();
-$("#thu-nho").onclick = () => { if(!suaTay) return; suaTay.zoom={s:1,tx:0,ty:0}; veSuaTay(); };
-$("#hoan-tac").onclick = () => {
+if(LA_APP) $("#thu-nho").onclick = () => { if(!suaTay) return; suaTay.zoom={s:1,tx:0,ty:0}; veSuaTay(); };
+if(LA_APP) $("#hoan-tac").onclick = () => {
   if(!suaTay || !suaTay.lichSu.length) return;
   const v=suaTay.lichSu.pop();
   if(v.l==="them")           suaTay.hop.splice(v.i,1);
@@ -928,7 +931,7 @@ $("#hoan-tac").onclick = () => {
   tinhNghiDoi(); tinhMau(); veSuaTay();
 };
 // Xoa mot khung trong moi cap cam, giu khung diem cao. Ca loat la MOT buoc hoan tac.
-$("#xoa-doi").onclick = () => {
+if(LA_APP) $("#xoa-doi").onclick = () => {
   if(!suaTay || !suaTay.cap.length) return;
   const ds=[];
   for(const [a,b] of suaTay.cap){
@@ -988,7 +991,7 @@ function raKetQua(r){
   if(navigator.vibrate) navigator.vibrate(r.loi?[80,60,80]:[40,40,40]);
   hien("man-kq");
 }
-$("#chup-lai").onclick=()=>hien("man-dem");
+if(LA_APP) $("#chup-lai").onclick=()=>hien("man-dem");
 // Luong thuong: chup xong TU LUU ngay, khong bat bam gi. Nut nho [Bo tam nay] hien 5 giay
 // roi tu an — khong bam gi nghia la da luu. Che do kiem thu thi KHONG tu luu, vi con phai
 // sua tay truoc khi chot so.
@@ -1015,7 +1018,7 @@ function anBoKhay(){
   const b=$("#bo-khay"); if(b) b.style.display="none";
   luuVua=null;                                   // het 5 giay thi khong bo duoc nua
 }
-$("#bo-khay").onclick=()=>{
+if(LA_APP) $("#bo-khay").onclick=()=>{
   if(!luuVua || !loHienTai){ anBoKhay(); return; }
   loHienTai.khay.pop(); (loHienTai.khayMay||[]).pop(); loHienTai.anh.pop();
   if(luuVua.moiTao || !loHienTai.khay.length){ loHienTai=null; localStorage.removeItem("loNhap"); }
@@ -1025,7 +1028,7 @@ $("#bo-khay").onclick=()=>{
   hien("man-dem");
 };
 // Che do kiem thu: van bam tay de con sua truoc khi chot.
-$("#them-khay").onclick=()=>{
+if(LA_APP) $("#them-khay").onclick=()=>{
   if(!tuLuuKhay()) return;
   const may=suaTay.soMay, chot=soChot();
   anBoKhay();
@@ -1041,12 +1044,12 @@ function veLo(){ const l=loHienTai; $("#lo-tong").textContent=l?l.khay.reduce((a
     $("#lo-sua").textContent = d ? `${may} → ${chot} (sửa tay ${d>0?"+":"−"}${Math.abs(d)})` : `${may} (không sửa tay)`;
   } else $("#lo-sua").textContent="—";
   if(l){ $("#lo-khach").value=l.khach; $("#lo-ghi").value=l.ghi_chu; } }
-$("#lo-them").onclick=()=>hien("man-dem");
-$("#lo-huy").onclick=()=>{ if(confirm("Hủy lô đang đếm?")){ loHienTai=null; localStorage.removeItem("loNhap"); daNhacLo=false; hien("man-dem"); } };
-$("#lo-khach").oninput=e=>{ if(loHienTai){ loHienTai.khach=e.target.value; luuNhap(); } };
-$("#lo-ghi").oninput=e=>{ if(loHienTai){ loHienTai.ghi_chu=e.target.value; luuNhap(); } };
+if(LA_APP) $("#lo-them").onclick=()=>hien("man-dem");
+if(LA_APP) $("#lo-huy").onclick=()=>{ if(confirm("Hủy lô đang đếm?")){ loHienTai=null; localStorage.removeItem("loNhap"); daNhacLo=false; hien("man-dem"); } };
+if(LA_APP) $("#lo-khach").oninput=e=>{ if(loHienTai){ loHienTai.khach=e.target.value; luuNhap(); } };
+if(LA_APP) $("#lo-ghi").oninput=e=>{ if(loHienTai){ loHienTai.ghi_chu=e.target.value; luuNhap(); } };
 function luuNhap(){ localStorage.loNhap=JSON.stringify(loHienTai); }
-$("#lo-xong").onclick=async()=>{ const l=loHienTai; if(!l||!l.khay.length) return tb("Chưa có khay nào."); daNhacLo=false;   // lo sau nhac lai
+if(LA_APP) $("#lo-xong").onclick=async()=>{ const l=loHienTai; if(!l||!l.khay.length) return tb("Chưa có khay nào."); daNhacLo=false;   // lo sau nhac lai
   l.so_con=l.khay.reduce((a,b)=>a+b,0);
   l.so_con_may=(l.khayMay||[]).reduce((a,b)=>a+b,0);
   l.so_sua=l.so_con-l.so_con_may; l.model_ver=modelVer; await dbLuu(l); loHienTai=null; localStorage.removeItem("loNhap");
@@ -1088,17 +1091,17 @@ function epVuong(p, M){
 }
 // ---- cai dat ----
 function veCaiDat(){ $("#cd-pb").textContent=PHIEN_BAN; capNhatLoai(); }
-$("#cd-kiem-thu").checked = batKiemThu();
-$("#cd-kiem-thu").onchange = e => {
+if(LA_APP) $("#cd-kiem-thu").checked = batKiemThu();
+if(LA_APP) $("#cd-kiem-thu").onchange = e => {
   localStorage.kiemThu = e.target.checked ? "1" : "0";
   veCheDoKiemThu(); if(suaTay) veSuaTay();
 };
 function veCheDoKiemThu(){ $("#kt-nang-cao").style.display = batKiemThu() ? "" : "none"; }
-veCheDoKiemThu();
-$("#cd-gop-tm").checked = batGopTM();
-$("#cd-gop-tm").onchange = e => { localStorage.gopThongMinh = e.target.checked?"1":"0"; veGhiChuHeSo(); };
-$("#cd-model-chon").value = modelChon;
-$("#cd-model-chon").onchange = e => {
+if(LA_APP) veCheDoKiemThu();
+if(LA_APP) $("#cd-gop-tm").checked = batGopTM();
+if(LA_APP) $("#cd-gop-tm").onchange = e => { localStorage.gopThongMinh = e.target.checked?"1":"0"; veGhiChuHeSo(); };
+if(LA_APP) $("#cd-model-chon").value = modelChon;
+if(LA_APP) $("#cd-model-chon").onchange = e => {
   modelChon = MODELS[e.target.value] ? e.target.value : MODEL_MD;
   localStorage.modelChon = modelChon; e.target.value = modelChon;
   heSoGop = docHeSo(); $("#cd-he-so").value = heSoGop; veGhiChuHeSo();
@@ -1109,22 +1112,27 @@ function veGhiChuHeSo(){
     ? `Đang dùng gộp thông minh: xét ảnh thật giữa hai tâm để biết một thân hay hai con. Hệ số dưới đây chỉ dùng khi tắt gộp thông minh.`
     : `Hai khung có tâm gần nhau hơn hệ số × chiều dài trung vị thì gộp làm một con. Cao hơn = gộp mạnh hơn. Mặc định ${heSoMacDinh(modelChon)}.`;
 }
-$("#cd-he-so").value = heSoGop; veGhiChuHeSo();
-$("#cd-he-so").onchange = e => {
+if(LA_APP){ $("#cd-he-so").value = heSoGop; veGhiChuHeSo(); }
+if(LA_APP) $("#cd-he-so").onchange = e => {
   const v=parseFloat(e.target.value);
   if(v>0 && v<10){ heSoGop=v; luuHeSo(v); } else { e.target.value=heSoGop; }
 };
-$("#cd-nhac").checked = batNhac(); $("#cd-nhac").onchange=e=>localStorage.nhac=e.target.checked?"1":"0";
-$("#cd-gop").checked = localStorage.gopAnh==="1"; $("#cd-gop").onchange=e=>localStorage.gopAnh=e.target.checked?"1":"0";
-$("#cd-model-tai").onclick=()=>{ tb("Đang kiểm tra…"); taiModel(); };
-veCaiDat();
-document.querySelector("header b").textContent="FarmX Counter v"+PHIEN_BAN;
-$("#cd-pb").textContent=PHIEN_BAN;
-$("#cd-xoa").onclick=async()=>{ if(confirm("Xóa toàn bộ lô trên máy?")){ indexedDB.deleteDatabase("farmx"); localStorage.removeItem("loNhap"); loHienTai=null; tb("Đã xóa."); } };
+if(LA_APP){ $("#cd-nhac").checked = batNhac(); $("#cd-nhac").onchange=e=>localStorage.nhac=e.target.checked?"1":"0"; }
+if(LA_APP){ $("#cd-gop").checked = localStorage.gopAnh==="1"; $("#cd-gop").onchange=e=>localStorage.gopAnh=e.target.checked?"1":"0"; }
+if(LA_APP) $("#cd-model-tai").onclick=()=>{ tb("Đang kiểm tra…"); taiModel(); };
+if(LA_APP) veCaiDat();
+if(LA_APP) document.querySelector("header b").textContent="FarmX Counter v"+PHIEN_BAN;
+if(LA_APP) $("#cd-pb").textContent=PHIEN_BAN;
+if(LA_APP) $("#cd-xoa").onclick=async()=>{ if(confirm("Xóa toàn bộ lô trên máy?")){ indexedDB.deleteDatabase("farmx"); localStorage.removeItem("loNhap"); loHienTai=null; tb("Đã xóa."); } };
 
 // ---- khoi dong ----
-if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
-if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(e){} }
-taiModel();
-capNhatLoai();
-hien(loaiCon ? "man-dem" : "man-loai");
+if(LA_APP) if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+if(LA_APP) if(localStorage.loNhap){ try{ loHienTai=JSON.parse(localStorage.loNhap); }catch(e){} }
+if(LA_APP) taiModel();
+if(LA_APP) capNhatLoai();
+if(LA_APP) hien(loaiCon ? "man-dem" : "man-loai");
+
+// ---- export cho tools/do-thu.html ----
+// Chi mo ra de dung lai, KHONG doi logic ben trong bat ky ham nao.
+export { timMa, matPhang, tinhH, epVuong, apH, warp, thuNho, anhTu,
+         MA_DV, PX_DV, MO_NGANG, MO_DOC };

@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FarmX — Đo thử hình học</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#fff;color:#1B2A38;font:17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+header{background:#fff;color:#1976D2;padding:14px 16px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #E3F2FD}
+header b{font-size:19px}header small{color:#607D8B;font-size:13px}
+main{padding:14px;max-width:760px;margin:0 auto;padding-bottom:40px}
+.nut{border:0;border-radius:12px;padding:14px 16px;font:inherit;font-size:16px;font-weight:700;color:#fff;background:#1976D2;cursor:pointer}
+.nut.phu{background:#fff;color:#1976D2;border:2px solid #1976D2}
+.nut.do{background:#B3261E}
+.nut:disabled{background:#CBD5DD;color:#6B7A86;border-color:#CBD5DD;cursor:default}
+.hang-nut{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+input[type=file]{display:none}
+.oco{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:15px;color:#607D8B}
+.oco input{width:96px;padding:8px;border:2px solid #CBD5DD;border-radius:10px;font:inherit;text-align:right}
+.tin{background:#E3F2FD;border:1px solid #BBDEFB;border-radius:12px;padding:10px 12px;font-size:15px;margin-bottom:12px;line-height:1.5}
+.tin b{color:#1976D2}
+.tin.loi{background:#F9DEDC;border-color:#F2B8B5;color:#B3261E}
+.tin.loi b{color:#B3261E}
+#boc{position:relative;background:#000;border-radius:12px;overflow:hidden;display:none}
+canvas{width:100%;display:block;touch-action:none}
+video{width:100%;display:block;border-radius:12px;background:#000}
+#khungCam{display:none;margin-bottom:12px}
+.ds{margin-top:14px}
+.ds h2{font-size:16px;margin-bottom:8px;color:#607D8B;font-weight:700}
+.ds ol{list-style:none}
+.ds li{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;background:#F2F6F8;margin-bottom:6px;font-size:16px}
+.ds li i{width:16px;height:16px;border-radius:4px;flex:0 0 16px}
+.ds li b{margin-left:auto;font-variant-numeric:tabular-nums}
+.trong{color:#607D8B;font-size:15px;padding:8px 2px}
+p.phu{color:#607D8B;font-size:14px;margin-top:10px;line-height:1.5}
+code{background:#F2F6F8;padding:1px 5px;border-radius:5px;font-size:13px}
+</style>
+</head>
+<body>
+<header><b>Đo thử hình học</b><small id="pb">—</small></header>
+<main>
+
+<div class="hang-nut">
+  <button class="nut phu" id="chon-tep">Chọn ảnh từ máy</button>
+  <input type="file" id="tep" accept="image/*">
+  <button class="nut phu" id="mo-cam">Mở camera</button>
+  <button class="nut do" id="xoa" disabled>Xoá hết</button>
+</div>
+
+<div class="oco">
+  <span>Cạnh mã in ra:</span><input type="number" id="co-ma" value="25" min="1" max="200" step="0.5"><span>mm</span>
+</div>
+
+<div id="khungCam">
+  <video id="video" playsinline muted></video>
+  <div class="hang-nut" style="margin-top:8px"><button class="nut" id="chup-cam">Chụp khung này</button></div>
+</div>
+
+<div class="tin" id="tin">Chọn một ảnh khay có dán mã ArUco, hoặc mở camera rồi chụp.</div>
+
+<div id="boc"><canvas id="anh"></canvas></div>
+
+<div class="ds">
+  <h2>Các đoạn đã đo</h2>
+  <ol id="ds"><li class="trong">Chưa đo đoạn nào. Chạm 2 điểm trên ảnh để tạo một đoạn.</li></ol>
+</div>
+
+<p class="phu">Trang này không dùng model AI. Nó nạp lại <code>timMa()</code>, <code>matPhang()</code>, <code>warp()</code> và <code>thuNho()</code> từ <code>app.js</code>, nên hình học ở đây luôn giống hệt app đếm. Ảnh nắn ở đây <b>không</b> tô xám ô quanh mã, để còn nhìn thấy mã mà kiểm tra nắn có đúng không.</p>
+<p class="phu">Phóng to bằng hai ngón, kéo để dịch khi đang phóng. Chạm một điểm rồi chạm điểm thứ hai là xong một đoạn.</p>
+<p class="phu">Đổi ra mm cần biết cạnh mã in ra bao nhiêu — app đếm cố tình không cần số này (mọi thứ tính theo <i>đơn vị mã</i>), nên ở đây phải nhập tay. Nhập sai thì mọi số mm sai theo cùng một tỉ lệ, còn tỉ lệ giữa các đoạn vẫn đúng.</p>
+
+</main>
+
+<script src="lib/cv.js"></script>
+<script src="lib/aruco.js"></script>
+<script src="lib/aruco_4x4_1000.js"></script>
+<script type="module">
+import { timMa, matPhang, warp, thuNho, MA_DV, PX_DV } from "./app.js";
+
+const $ = s => document.querySelector(s);
+const MAU = ["#1976D2","#E53935","#00897B","#F9A825","#8E24AA","#43A047","#D81B60","#3949AB","#EF6C00","#00ACC1"];
+
+let nan = null;                       // canvas anh nan
+let diem = [];                        // diem dang cho ghep cap (0 hoac 1 diem)
+let doan = [];                        // [{a:[x,y], b:[x,y], mau}]
+let zoom = { s:1, tx:0, ty:0 };
+let stream = null;
+
+$("#pb").textContent = `MA_DV ${MA_DV} · PX_DV ${PX_DV}`;
+
+// Bao nhieu mm cho mot pixel cua anh nan.
+// 1 don vi ma = (canh ma in ra) / MA_DV mm, va moi don vi rong PX_DV px trong anh nan.
+const mmMoiPx = () => {
+  const co = parseFloat($("#co-ma").value);
+  return (co > 0 ? co : 25) / (MA_DV * PX_DV);
+};
+
+function bao(html, loi){
+  const e = $("#tin");
+  e.innerHTML = html;
+  e.className = "tin" + (loi ? " loi" : "");
+}
+
+// ---------- anh vao -> tim ma -> nan ----------
+function xuLy(src){
+  let nho, tam, mp;
+  try{
+    ({ canvas:nho } = thuNho(src));
+    tam = timMa(nho);
+    mp  = matPhang(tam);
+  }catch(e){
+    return bao("Lỗi khi dò mã: " + ((e && e.message) || e), true);
+  }
+  const soThay = tam ? tam.size : 0;
+  if(!mp){
+    nan = null;
+    $("#boc").style.display = "none";
+    $("#xoa").disabled = true;
+    return bao(`Chỉ thấy <b>${soThay}</b> mã — cần ít nhất <b>3</b> mã mới dựng được mặt phẳng khay.`, true);
+  }
+  const V = mp.vung;
+  nan = warp(nho, mp.H,
+             Math.round(V.w * PX_DV), Math.round(V.h * PX_DV),
+             Math.round(V.x * PX_DV), Math.round(V.y * PX_DV));
+  doan = []; diem = []; zoom = { s:1, tx:0, ty:0 };
+  const c = $("#anh");
+  c.width = nan.width; c.height = nan.height;
+  $("#boc").style.display = "block";
+  $("#xoa").disabled = false;
+  bao(`Thấy <b>${mp.soMa}</b> mã · ảnh nắn <b>${nan.width}×${nan.height}</b> px `
+    + `· vùng đo <b>${Math.round(V.w)}×${Math.round(V.h)}</b> đơn vị `
+    + `· sai số tái chiếu <b>${mp.saiSo.rms}</b> px (lớn nhất ${mp.saiSo.max})`);
+  ve(); veDs();
+}
+
+function tuTep(tep){
+  const img = new Image();
+  const url = URL.createObjectURL(tep);
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext("2d").drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+    xuLy(c);
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); bao("Không đọc được ảnh này.", true); };
+  img.src = url;
+}
+
+$("#chon-tep").onclick = () => $("#tep").click();
+$("#tep").onchange = e => { const f = e.target.files[0]; if(f) tuTep(f); e.target.value = ""; };
+
+// ---------- camera ----------
+$("#mo-cam").onclick = async () => {
+  if(stream) return dongCam();
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:{ ideal:"environment" }, width:{ ideal:3024 }, height:{ ideal:4032 } },
+      audio: false
+    });
+    $("#video").srcObject = stream;
+    await $("#video").play();
+    $("#khungCam").style.display = "block";
+    $("#mo-cam").textContent = "Tắt camera";
+  }catch(e){
+    stream = null;
+    bao("Không mở được camera: " + ((e && e.message) || e), true);
+  }
+};
+
+function dongCam(){
+  if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+  $("#khungCam").style.display = "none";
+  $("#mo-cam").textContent = "Mở camera";
+}
+
+$("#chup-cam").onclick = () => {
+  const v = $("#video");
+  if(!v.videoWidth) return bao("Camera chưa sẵn sàng, đợi một giây rồi chụp lại.", true);
+  const c = document.createElement("canvas");
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v, 0, 0);
+  dongCam();
+  xuLy(c);
+};
+
+// ---------- ve ----------
+// Ty le tu don vi anh -> px man hinh, de net ve va chu giu nguyen co du phong to bao nhieu.
+function tyLeManHinh(){
+  const c = $("#anh"), r = c.getBoundingClientRect();
+  return (r.width ? r.width / c.width : 1) * zoom.s;
+}
+
+function ve(){
+  if(!nan) return;
+  const c = $("#anh"), g = c.getContext("2d");
+  g.setTransform(1,0,0,1,0,0);
+  g.fillStyle = "#000"; g.fillRect(0,0,c.width,c.height);
+  g.setTransform(zoom.s,0,0,zoom.s,zoom.tx,zoom.ty);
+  g.drawImage(nan,0,0);
+
+  const tl = tyLeManHinh(), net = 3/tl, r = 7/tl;
+  g.lineWidth = net;
+  g.font = `${Math.round(15/tl)}px system-ui, sans-serif`;
+  g.textBaseline = "bottom";
+
+  doan.forEach((d,i) => {
+    g.strokeStyle = d.mau; g.fillStyle = d.mau;
+    g.beginPath(); g.moveTo(d.a[0], d.a[1]); g.lineTo(d.b[0], d.b[1]); g.stroke();
+    for(const p of [d.a, d.b]){ g.beginPath(); g.arc(p[0], p[1], r, 0, Math.PI*2); g.fill(); }
+    const mx = (d.a[0]+d.b[0])/2, my = (d.a[1]+d.b[1])/2;
+    const nhan = `${i+1}: ${(Math.hypot(d.b[0]-d.a[0], d.b[1]-d.a[1]) * mmMoiPx()).toFixed(1)} mm`;
+    g.lineWidth = net*2.5; g.strokeStyle = "rgba(0,0,0,.6)";
+    g.strokeText(nhan, mx + r, my - r);
+    g.fillStyle = d.mau; g.fillText(nhan, mx + r, my - r);
+    g.lineWidth = net;
+  });
+
+  if(diem.length === 1){
+    g.fillStyle = MAU[doan.length % MAU.length];
+    g.beginPath(); g.arc(diem[0][0], diem[0][1], r, 0, Math.PI*2); g.fill();
+  }
+  g.setTransform(1,0,0,1,0,0);
+}
+
+function veDs(){
+  const e = $("#ds");
+  if(!doan.length){
+    e.innerHTML = '<li class="trong">Chưa đo đoạn nào. Chạm 2 điểm trên ảnh để tạo một đoạn.</li>';
+    return;
+  }
+  e.innerHTML = doan.map((d,i) => {
+    const mm = Math.hypot(d.b[0]-d.a[0], d.b[1]-d.a[1]) * mmMoiPx();
+    return `<li><i style="background:${d.mau}"></i>Đoạn ${i+1}<b>${mm.toFixed(1)} mm</b></li>`;
+  }).join("");
+}
+
+$("#co-ma").oninput = () => { ve(); veDs(); };
+$("#xoa").onclick = () => { doan = []; diem = []; ve(); veDs(); };
+
+// ---------- cham + phong to hai ngon ----------
+const c = $("#anh");
+const ngon = new Map();
+let truoc = null, diChuyen = 0, tBatDau = 0, khoangCu = 0;
+
+function toaDoAnh(ev){
+  const r = c.getBoundingClientRect();
+  // r.width = 0 khi trang chua co bo cuc (tab an, cua so 0 px) -> chia cho 0 ra NaN.
+  // Giu cung nep voi tyLeManHinh() trong app.js: khong co be rong thi coi nhu 1:1.
+  const kx = r.width  ? c.width  / r.width  : 1;
+  const ky = r.height ? c.height / r.height : 1;
+  const x = (ev.clientX - r.left) * kx;
+  const y = (ev.clientY - r.top)  * ky;
+  return [ (x - zoom.tx)/zoom.s, (y - zoom.ty)/zoom.s ];
+}
+
+function ganBien(){
+  const w = c.width*zoom.s, h = c.height*zoom.s;
+  zoom.tx = w <= c.width  ? (c.width-w)/2   : Math.min(0, Math.max(c.width-w,  zoom.tx));
+  zoom.ty = h <= c.height ? (c.height-h)/2  : Math.min(0, Math.max(c.height-h, zoom.ty));
+}
+
+c.addEventListener("pointerdown", e => {
+  if(!nan) return;
+  ngon.set(e.pointerId, [e.clientX, e.clientY]);
+  try{ c.setPointerCapture(e.pointerId); }catch(err){}   // bat duoc thi tot, khong thi van do duoc
+  if(ngon.size === 1){ truoc = [e.clientX, e.clientY]; diChuyen = 0; tBatDau = Date.now(); }
+  else { truoc = null; diChuyen = 999; }   // hai ngon thi khong tinh la cham nua
+});
+
+c.addEventListener("pointermove", e => {
+  if(!nan || !ngon.has(e.pointerId)) return;
+  ngon.set(e.pointerId, [e.clientX, e.clientY]);
+  const ds = [...ngon.values()];
+
+  if(ds.length >= 2){
+    const kc = Math.hypot(ds[0][0]-ds[1][0], ds[0][1]-ds[1][1]);
+    if(khoangCu){
+      const r = c.getBoundingClientRect(), k = c.width / r.width;
+      const gx = ((ds[0][0]+ds[1][0])/2 - r.left) * k;
+      const gy = ((ds[0][1]+ds[1][1])/2 - r.top)  * k;
+      const cu = zoom.s;
+      zoom.s = Math.min(8, Math.max(1, zoom.s * (kc / khoangCu)));
+      zoom.tx = gx - (gx - zoom.tx) * (zoom.s/cu);
+      zoom.ty = gy - (gy - zoom.ty) * (zoom.s/cu);
+      ganBien(); ve();
+    }
+    khoangCu = kc;
+  } else if(truoc){
+    const dx = e.clientX - truoc[0], dy = e.clientY - truoc[1];
+    diChuyen += Math.hypot(dx, dy);
+    if(zoom.s > 1){
+      const r = c.getBoundingClientRect(), k = c.width / r.width;
+      zoom.tx += dx*k; zoom.ty += dy*k;
+      ganBien(); ve();
+    }
+    truoc = [e.clientX, e.clientY];
+  }
+});
+
+function ketThuc(e){
+  if(!ngon.has(e.pointerId)) return;
+  ngon.delete(e.pointerId);
+  if(ngon.size < 2) khoangCu = 0;
+  if(ngon.size > 0) return;
+
+  // Cham that su: di chuyen < 8 px va nhanh hon 600 ms — giong quy uoc trong app.js.
+  if(nan && diChuyen < 8 && Date.now() - tBatDau < 600){
+    const p = toaDoAnh(e);
+    if(diem.length === 0){ diem = [p]; }
+    else { doan.push({ a:diem[0], b:p, mau: MAU[doan.length % MAU.length] }); diem = []; veDs(); }
+    ve();
+  }
+  truoc = null; diChuyen = 0;
+}
+
+c.addEventListener("pointerup", ketThuc);
+c.addEventListener("pointercancel", ketThuc);
+window.addEventListener("resize", ve);
+</script>
+</body>
+</html>
