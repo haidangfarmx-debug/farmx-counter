@@ -17,7 +17,7 @@ let modelChon = MODEL_MD;   // UI chon model da an -> luon dung MODEL_MD
 const MA_DV = 25;           // canh mot ma = 25 don vi
 const LE_DEM = 30;          // vung dem thut vao 30 don vi = 1,2 lan canh ma
 const CHE_MA = 35;          // o che quanh moi ma = 35 don vi = 1,4 lan canh ma
-const PX_DV = 4;            // px moi don vi trong anh nan (v2.5: 2 -> 4, anh nan ~1212x912)
+const PX_DV = 3;            // px moi don vi trong anh nan (v2.6: 4 -> 3, anh nan ~909x684)
 const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan
 const SO_MA = 6;            // khay dan 6 ma ID 0-5 (timMa da loc bo ID > 5)
 // He so gop cum mac dinh RIENG cho tung model — moi model cho ra khung to nho khac nhau
@@ -74,7 +74,7 @@ let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session =
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let luuVua = null;   // { moiTao } — lan tu luu gan nhat, de con bo lai duoc
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "2.5";
+const PHIEN_BAN = "2.6";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
