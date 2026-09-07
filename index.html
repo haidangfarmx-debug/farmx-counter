@@ -120,7 +120,7 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
 </style>
 </head>
 <body>
-<header><b>FarmX Counter</b><small id="tt-model">chưa có model</small></header>
+<header><b>FarmX Counter</b><small id="tt-model" style="display:none">chưa có model</small></header>
 <div class="thong-bao" id="tb"></div>
 <main>
 
@@ -147,7 +147,7 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
   <div class="kiem" id="kiem">
     <span class="o" id="o-cam">Camera</span>
     <span class="o" id="o-khay">Khay</span>
-    <span class="o" id="o-model">Model</span>
+    <span class="o" id="o-model" style="display:none">Model</span>
   </div>
   <div class="chup-vung">
     <button class="nut-tron" id="chup" aria-label="Chụp"><i></i></button>
@@ -206,19 +206,19 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
   <div class="hang"><span>Nhắc trước khi chụp</span><b><input type="checkbox" id="cd-nhac" style="width:24px;height:24px"></b></div>
   <div class="hang"><span>Góp ảnh để cải thiện model</span><b><input type="checkbox" id="cd-gop" style="width:24px;height:24px"></b></div>
   <p class="phu" style="margin-top:10px">Ảnh khay gửi ngầm khi có WiFi, không kèm tên khách, không kèm vị trí.</p>
-  <button class="nut phu2" id="cd-model-tai">Kiểm tra model mới</button>
+  <button class="nut phu2" id="cd-model-tai" style="display:none">Kiểm tra model mới</button>
   <button class="nut phu2" id="cd-xoa">Xóa toàn bộ dữ liệu trên máy</button>
   <details class="nang-cao">
     <summary>Nâng cao</summary>
     <div class="hang"><span>Phiên bản app</span><b id="cd-pb">—</b></div>
-    <div class="hang"><span>Model đếm</span><b id="cd-model">chưa tải</b></div>
-    <div class="hang"><span>Camera</span><b id="cd-cam">chưa bật</b></div>
+    <div class="hang" style="display:none"><span>Model đếm</span><b id="cd-model">chưa tải</b></div>
+    <div class="hang" style="display:none"><span>Camera</span><b id="cd-cam">chưa bật</b></div>
     <div class="hang"><span>Lần chụp gần nhất</span><b id="cd-lan">—</b></div>
     <p class="phu" style="margin-top:10px">Khay được nắn tự động trong từng tấm ảnh, không cần hiệu chuẩn. Gộp thân tôm cũng tự động.</p>
-    <div class="hang"><span>Chế độ kiểm thử</span><b><input type="checkbox" id="cd-kiem-thu" style="width:24px;height:24px"></b></div>
-    <p class="phu">Bật lên mới hiện sửa tay trên ảnh kết quả và các nút chỉnh. Người dùng thường không cần.</p>
+    <div class="hang" style="display:none"><span>Chế độ kiểm thử</span><b><input type="checkbox" id="cd-kiem-thu" style="width:24px;height:24px"></b></div>
+    <p class="phu" style="display:none">Bật lên mới hiện sửa tay trên ảnh kết quả và các nút chỉnh. Người dùng thường không cần.</p>
     <div id="kt-nang-cao" style="display:none">
-      <div class="hang"><span>Chọn model</span><b><select id="cd-model-chon" style="font:inherit;padding:6px;border-radius:8px"><option value="dem_v02">dem_v02 (mới nhất)</option><option value="dem_v01">dem_v01 (cũ)</option><option value="dem_v0">dem_v0 (cũ, để đối chiếu)</option></select></b></div>
+      <div class="hang" style="display:none"><span>Chọn model</span><b><select id="cd-model-chon" style="font:inherit;padding:6px;border-radius:8px"><option value="dem_v02">dem_v02 (mới nhất)</option><option value="dem_v01">dem_v01 (cũ)</option><option value="dem_v0">dem_v0 (cũ, để đối chiếu)</option></select></b></div>
       <div class="hang"><span>Gộp thông minh</span><b><input type="checkbox" id="cd-gop-tm" style="width:24px;height:24px"></b></div>
       <div class="hang"><span>Hệ số gộp cụm</span><b><input type="number" id="cd-he-so" min="0.1" max="3" step="0.05" style="width:92px;margin:0;padding:8px;text-align:right"></b></div>
       <p class="phu" id="cd-he-so-ghi"></p>
@@ -229,8 +229,8 @@ details.nang-cao summary{font-weight:700;color:var(--phu);padding:8px 0;cursor:p
 </main>
 <nav class="thanh">
   <button data-m="man-dem" class="dang"><span>▣</span>Đếm</button>
-  <button data-m="man-lo"><span>≡</span>Lô</button>
-  <button data-m="man-ls"><span>◷</span>Lịch sử</button>
+  <button data-m="man-lo" style="display:none"><span>≡</span>Lô</button>
+  <button data-m="man-ls" style="display:none"><span>◷</span>Lịch sử</button>
   <button data-m="man-cd"><span>⚙</span>Cài đặt</button>
 </nav>
 <script src="lib/cv.js"></script>

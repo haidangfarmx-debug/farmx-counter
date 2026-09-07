@@ -7,8 +7,8 @@ const SUPABASE_KEY = "sb_publishable_DeOQ4ZYgl_6Oxth4eYyrbg_EBiJ6unP";
 // Model tu host trong repo. Cung kien truc: YOLO11n, input [1,3,1280,1280], output [1,5,33600].
 // Giu ban cu de doi chieu khi ban moi dem lech.
 const MODELS = { dem_v02: "./model/dem_v02.onnx", dem_v01: "./model/dem_v01.onnx", dem_v0: "./model/dem_v0.onnx" };
-const MODEL_MD = "dem_v01";
-let modelChon = MODELS[localStorage.modelChon] ? localStorage.modelChon : MODEL_MD;
+const MODEL_MD = "dem_v02";
+let modelChon = MODEL_MD;   // UI chon model da an -> luon dung MODEL_MD
 
 // ---- thong so nan khay ----
 // KHONG con hieu chuan luu tru. Moi tam anh tu dung lai mat phang khay tu chinh cac ma trong no.
@@ -71,7 +71,7 @@ let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session =
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let luuVua = null;   // { moiTao } — lan tu luu gan nhat, de con bo lai duoc
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "2.2";
+const PHIEN_BAN = "2.3";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -921,7 +921,7 @@ function raKetQua(r){
       phuEl.textContent = `Đã lưu vào lô · ${phuEl.textContent}`;
     } else anBoKhay();
     const e=$("#cd-lan");
-    if(e) e.textContent=`${r.soMa} mã · vùng đếm ${Math.round(r.vung.w)}×${Math.round(r.vung.h)} đv · sai số ${r.saiSo.rms} px`;
+    if(e) e.textContent=`${r.soMa} mã · vùng đếm ${Math.round(r.vung.w)}×${Math.round(r.vung.h)} đv`;
   }
   if(navigator.vibrate) navigator.vibrate(r.loi?[80,60,80]:[40,40,40]);
   hien("man-kq");
@@ -988,7 +988,7 @@ $("#lo-xong").onclick=async()=>{ const l=loHienTai; if(!l||!l.khay.length) retur
   l.so_con=l.khay.reduce((a,b)=>a+b,0);
   l.so_con_may=(l.khayMay||[]).reduce((a,b)=>a+b,0);
   l.so_sua=l.so_con-l.so_con_may; l.model_ver=modelVer; await dbLuu(l); loHienTai=null; localStorage.removeItem("loNhap");
-  tb("Đã lưu lô. Báo cáo PDF: v1.1"); dongBo(l); hien("man-ls"); };
+  tb("Đã lưu lô. Báo cáo PDF: v1.1"); dongBo(l); hien("man-dem"); };
 
 // ---- IndexedDB ----
 function db(){ return new Promise((res,rej)=>{ const r=indexedDB.open("farmx",1); r.onupgradeneeded=()=>r.result.createObjectStore("lo",{keyPath:"id"}); r.onsuccess=()=>res(r.result); r.onerror=rej; }); }
