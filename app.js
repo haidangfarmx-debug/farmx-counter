@@ -17,7 +17,7 @@ let modelChon = MODEL_MD;   // UI chon model da an -> luon dung MODEL_MD
 const MA_DV = 25;           // canh mot ma = 25 don vi
 const LE_DEM = 30;          // vung dem thut vao 30 don vi = 1,2 lan canh ma
 const CHE_MA = 35;          // o che quanh moi ma = 35 don vi = 1,4 lan canh ma
-const PX_DV = 2;            // px moi don vi trong anh nan
+const PX_DV = 4;            // px moi don vi trong anh nan (v2.5: 2 -> 4, anh nan ~1212x912)
 const CANH_DAI_DO = 1600;   // thu nho ve canh dai nay truoc khi do ma / nan
 const SO_MA = 6;            // khay dan 6 ma ID 0-5 (timMa da loc bo ID > 5)
 // He so gop cum mac dinh RIENG cho tung model — moi model cho ra khung to nho khac nhau
@@ -74,7 +74,7 @@ let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session =
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let luuVua = null;   // { moiTao } — lan tu luu gan nhat, de con bo lai duoc
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "2.4";
+const PHIEN_BAN = "2.5";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -509,6 +509,9 @@ function iouBox(a,b){ const x1=Math.max(a[0],b[0]),y1=Math.max(a[1],b[1]),x2=Mat
 // luoi LUOI x LUOI roi chay tung o: moi o duoc phong len 1280 nen con giong to ra, model de
 // thay hon. Hai o ke nhau chong nhau CHONG_MEP be rong mot o de con nam dung mep khong bi
 // cat doi; phan trung nhau o vung chong mep do NMS toan cuc don lai sau.
+// v2.5: TAT chia o, chay nguyen anh nan mot lan nhu v2.3.1. Giu demYoloChiaO() lai nhung
+// KHONG goi. Bat lai thi doi demYolo -> demYoloChiaO trong demKhay va sua SO_O_DUNG cho khop.
+const SO_O_DUNG = 1;         // so o thuc su dang dung, chi de ghi vao dau chim
 const LUOI = 3;              // luoi 3x3 = 9 o. Ha xuong 2 (4 o) neu may cham qua.
 const CHONG_MEP = 0.15;      // hai o ke nhau chong nhau 15% be rong mot o
 const IOU_TOAN_CUC = 0.45;   // NMS gop ket qua cua tat ca cac o
@@ -674,7 +677,7 @@ async function demKhay(soKhung){
     const ketQua=[], truocGop=[], khungKQ=[];
     const tModel=performance.now();
     if(session){ for(const r of nan){
-      const bx=await demYoloChiaO(r.canvas);
+      const bx=await demYolo(r.canvas);   // chia o dang TAT — xem SO_O_DUNG
       const gop = batGopTM() ? gopThongMinh(bx, r.canvas) : gopCum(bx, heSoGop);
       truocGop.push(bx.length); ketQua.push(gop.length);
       khungKQ.push({canvas:r.canvas, boxes:gop});   // giu canvas SACH, ve khung luc hien
@@ -806,7 +809,7 @@ function veSuaTay(){
   g.textAlign="right"; g.textBaseline="bottom";
   g.shadowColor="rgba(0,0,0,.35)"; g.shadowBlur=2;
   g.fillStyle="rgba(200,208,214,.72)";
-  g.fillText(`v${PHIEN_BAN} · ${MODEL_MD} · ${LUOI*LUOI} ô`, c.width-8, c.height-6);
+  g.fillText(`v${PHIEN_BAN} · ${MODEL_MD} · ${SO_O_DUNG} ô · ${a.width}×${a.height}`, c.width-8, c.height-6);
   g.restore();
   const may=suaTay.soMay, chot=soChot(), d=chot-may;
   $("#so-con").textContent = chot.toLocaleString("vi");
