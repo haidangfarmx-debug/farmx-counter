@@ -26,7 +26,7 @@ PWA chạy trên điện thoại, mở bằng link. Đếm tôm PL / tôm ương
 
 ## Kiến trúc (giữ nguyên)
 - Static site, KHÔNG build step: `index.html` + `app.js` + `sw.js` + `manifest.json` + `icon.svg` ở gốc repo. Cloudflare Pages deploy thẳng (build command trống, output `/`).
-- AI chạy trong trình duyệt, KHÔNG dùng OpenCV.js (đã bỏ ở v0.6, nó nặng 10 MB). Đọc mã ArUco bằng js-aruco2 tự host trong `lib/` (`cv.js` + `aruco.js` + `aruco_4x4_1000.js`, tổng 54 KB); homography và nắn khay tự viết thuần JS trong `app.js`. ONNX Runtime Web vẫn tải từ jsdelivr, chỉ khi có model. Model YOLO11n ONNX tự host trong `model/`: `dem_v02.onnx` (mới nhất), `dem_v01.onnx` (mặc định) và `dem_v0.onnx` (giữ để đối chiếu). Cùng kiến trúc: 10,6 MB, opset 12, input `[1,3,1280,1280]`, output `[1,5,33600]`, 1 class `shrimp`. Chọn bản nào trong Cài đặt > Nâng cao (`localStorage.modelChon`).
+- AI chạy trong trình duyệt, KHÔNG dùng OpenCV.js (đã bỏ ở v0.6, nó nặng 10 MB). Đọc mã ArUco bằng js-aruco2 tự host trong `lib/` (`cv.js` + `aruco.js` + `aruco_4x4_1000.js`, tổng 54 KB); homography và nắn khay tự viết thuần JS trong `app.js`. ONNX Runtime Web vẫn tải từ jsdelivr, chỉ khi có model. Model YOLO11n ONNX tự host trong `model/`: `dem_v01.onnx` (**đang dùng**, `MODEL_MD = "dem_v01"`), `dem_v02.onnx` và `dem_v0.onnx` (giữ để đối chiếu). Cùng kiến trúc: 10,6 MB, opset 12, input `[1,3,1280,1280]`, output `[1,5,33600]`, 1 class `shrimp`. **Không còn chọn model trong giao diện** (ẩn từ v2.3); `localStorage.modelChon` không còn được đọc, app luôn dùng `MODEL_MD`.
 - Supabase project `farmx-web` (xofhpbfiuolkcbwbxume): bảng `counter_lo`, `counter_anh_gop`, `counter_model`; bucket `counter-anh` (riêng tư), `counter-model` (public). Anon key nằm trong `app.js`. Chỉ ghi lô + ảnh góp opt-in; không xử lý AI trên server.
 - Lưu cục bộ: IndexedDB `farmx` store `lo`; nháp lô trong localStorage `loNhap`.
 - Service worker: file cùng origin = mạng trước cache sau; thư viện CDN = cache trước. Đổi tên `CACHE` trong `sw.js` khi phát hành.
@@ -40,10 +40,13 @@ PWA chạy trên điện thoại, mở bằng link. Đếm tôm PL / tôm ương
 ## Vùng đếm
 - `vungDem()` suy từ tâm các mã **thấy được trong chính tấm ảnh đó**: hình chữ nhật nối các tâm, **thụt vào `LE_DEM` mỗi phía**.
 - Trước khi đưa vào model, tô xám ô **35×35 mm** quanh mỗi mã (`CHE_MA`) để model không đếm nhầm mã. Với khay hiện tại các ô này nằm trọn ngoài vùng đếm nên chưa kích hoạt — giữ làm bảo hiểm khi mã dán lệch vào trong.
-- Ảnh nắn có kích thước `vùng đếm × PX_DV`, PX_DV = 2. Không hardcode kích thước ảnh nắn.
+- Ảnh nắn có kích thước `vùng đếm × PX_DV`, **PX_DV = 3** (~909×684, letterbox vào 1280 phóng 1,41 lần). Không hardcode kích thước ảnh nắn.
+- **PX_DV = 3 là số đã chốt bằng đo thực địa**, đừng chỉnh lại nếu không có số mới. Trên tờ C 400 con: PX_DV 2 → −2,6% · **PX_DV 3 → 399/400 = −0,25%** · PX_DV 4 → 417/400 = +4,3%. PX_DV = 4 nhìn tưởng tốt nhưng là hai lỗi bù trừ nhau: khung quá nhỏ so với thân, nhiều con dính 2 khung chồng nhau, đồng thời sót nhiều.
 - Cần **≥ 3 mã**; dưới đó báo "Không thấy khay — chỉnh lại điện thoại". Lưu ý: thiếu mã thì hình chữ nhật nối tâm nhỏ đi, nên **vùng đếm co lại** và số đếm giữa các lần chụp không so sánh được. Muốn số ổn định thì phải thấy đủ 6 mã.
 
 ## Bẫy đã gặp — đừng lặp
+- **Chia ô (tiling) ĐÃ THỬ VÀ BỎ ở v2.4.** Cắt ảnh nắn thành lưới 3×3 chồng mép 15%, chạy model từng ô rồi NMS toàn cục IoU 0,45: ra **−34%** trên tờ C 400 con, tệ hơn hẳn chạy nguyên ảnh một lần. Lý do: mỗi ô chỉ ~217×163 bị phóng lên 1280 tức gấp ~5,9 lần, con giống to hơn nhiều so với cỡ model từng thấy lúc train. Hàm `demYoloChiaO()` vẫn còn trong `app.js` nhưng **không được gọi** (`SO_O_DUNG = 1`); giữ lại để khỏi ai viết lại từ đầu. Muốn thử lại thì phải train model ở cỡ khác trước, đừng chỉ bật hàm lên.
+- **`dem_v02` ĐÃ THỬ VÀ BỎ.** Số lúc train đẹp (mAP50 0,982) nhưng đo thực địa tờ C 400 con ra **−10,8%**, trong khi `dem_v01` chỉ **−2,6%**. Bài học: mAP trên val set tự sinh không nói lên gì về sai số đếm thực tế, và số đo lúc train ở imgsz 640 không dùng để suy ra chất lượng bản ONNX chạy ở 1280.
 - KHÔNG hardcode `TAM_MA`/kích thước ảnh nắn. Mọi thứ suy từ `tam` của bản hiệu chuẩn.
 - Sai số khớp homography tính trên 6 **tâm** mã luôn ra ~0 và **vô nghĩa** — tâm mm sinh ra từ chính homography đó. Chỉ số thật là sai số tái chiếu trên **24 góc** mà `hieuChuan()` trả về (`saiSo.rms`).
 - `matPhang()` khử phối cảnh bằng ràng buộc "mỗi mã là hình vuông bằng nhau" (hàm `epVuong`); nếu chỉ chiếu tâm theo tỉ lệ thì góc chụp nghiêng sẽ méo thẳng vào ảnh nắn.
@@ -93,9 +96,17 @@ Không thêm bước, không thêm nút vào luồng này. Thông số kỹ thu�
 - Thanh 4 bước `moBuoc()`: mỗi bước hiện ít nhất 300 ms. Kết quả ghi "Xong 4/4" / "Dừng ở bước n/4".
 
 ## Model
-- `model/dem_v02.onnx` (mới nhất), `model/dem_v01.onnx` (mặc định) và `model/dem_v0.onnx` — YOLO11n từ Ultralytics 8.4.142, export imgsz 1280.
+- `model/dem_v01.onnx` (**đang dùng**), `model/dem_v02.onnx` và `model/dem_v0.onnx` (giữ để đối chiếu) — YOLO11n từ Ultralytics 8.4.142, export imgsz 1280.
 - `dem_v01` và `dem_v0` train imgsz 640 trên patch; trùng dung lượng nhưng khác trọng số (SHA-256 khác, export 03:05 vs 06:08 ngày 6/9/2026).
-- `dem_v02` train 6/9/2026 bằng `scripts/train_v02.py` (40 epoch, imgsz 640, batch 32) trên dataset Roboflow + ảnh đảo màu + 2900 ảnh tôm vẽ tự sinh: mAP50 **0,982**, mAP50-95 **0,705**; sai số nền tối 10,9% / nền sáng 11,1% / tôm vẽ 13,1%. Chưa phải mặc định — chọn tay trong Cài đặt > Nâng cao.
+- `dem_v02` train 6/9/2026 bằng `scripts/train_v02.py` (40 epoch, imgsz 640, batch 32) trên dataset Roboflow + ảnh đảo màu + 2900 ảnh tôm vẽ tự sinh: mAP50 **0,982**, mAP50-95 **0,705**. **ĐÃ THỬ VÀ BỎ** — xem mục Bẫy đã gặp.
+- So 3 bản trên cùng thước (ONNX, imgsz 1280, conf 0,3, n=120 mỗi nhóm) bằng `scripts/so_sanh_model.py`:
+
+  | model | nền tối | nền sáng | tôm vẽ |
+  |---|---|---|---|
+  | dem_v0 | 13,8% | **96,2%** | 21,5% |
+  | **dem_v01** | **14,4%** | **15,6%** | 25,6% |
+  | dem_v02 | 17,9% | 16,7% | **14,4%** |
+
 - Hậu xử lý trong `demYolo()` khớp `[1, 4+nc, N]`; không sửa gì khi đổi model cùng dạng.
 - Suy luận **2,5–3,2 s mỗi khung** trên wasm (đo trên Mac). Ba khung ≈ 8–10 s. Trên iPhone có WebGPU
   sẽ nhanh hơn; `executionProviders` đã để `["webgpu","wasm"]`.
