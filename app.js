@@ -7,7 +7,7 @@ const SUPABASE_KEY = "sb_publishable_DeOQ4ZYgl_6Oxth4eYyrbg_EBiJ6unP";
 // Model tu host trong repo. Cung kien truc: YOLO11n, input [1,3,1280,1280], output [1,5,33600].
 // Giu ban cu de doi chieu khi ban moi dem lech.
 const MODELS = { dem_v02: "./model/dem_v02.onnx", dem_v01: "./model/dem_v01.onnx", dem_v0: "./model/dem_v0.onnx" };
-const MODEL_MD = "dem_v02";
+const MODEL_MD = "dem_v01";
 let modelChon = MODEL_MD;   // UI chon model da an -> luon dung MODEL_MD
 
 // ---- thong so nan khay ----
@@ -74,7 +74,7 @@ let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session =
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let luuVua = null;   // { moiTao } — lan tu luu gan nhat, de con bo lai duoc
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "2.3.1";
+const PHIEN_BAN = "2.4";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -504,6 +504,36 @@ async function demYolo(canvas, imgsz=1280, conf=0.25, iou=0.5){
   return keep;
 }
 function iouBox(a,b){ const x1=Math.max(a[0],b[0]),y1=Math.max(a[1],b[1]),x2=Math.min(a[2],b[2]),y2=Math.min(a[3],b[3]); const i=Math.max(0,x2-x1)*Math.max(0,y2-y1); const u=(a[2]-a[0])*(a[3]-a[1])+(b[2]-b[0])*(b[3]-b[1])-i; return u>0?i/u:0; }
+// ---- chia o (tiling) ----
+// Anh nan chi khoang 600x450 px, con giong rat nho so voi input 1280 cua model. Cat thanh
+// luoi LUOI x LUOI roi chay tung o: moi o duoc phong len 1280 nen con giong to ra, model de
+// thay hon. Hai o ke nhau chong nhau CHONG_MEP be rong mot o de con nam dung mep khong bi
+// cat doi; phan trung nhau o vung chong mep do NMS toan cuc don lai sau.
+const LUOI = 3;              // luoi 3x3 = 9 o. Ha xuong 2 (4 o) neu may cham qua.
+const CHONG_MEP = 0.15;      // hai o ke nhau chong nhau 15% be rong mot o
+const IOU_TOAN_CUC = 0.45;   // NMS gop ket qua cua tat ca cac o
+async function demYoloChiaO(canvas, luoi=LUOI){
+  if(luoi<=1) return demYolo(canvas);
+  const W=canvas.width, H=canvas.height, bw=W/luoi, bh=H/luoi;
+  // no ra moi ben mot NUA chong mep -> hai o ke nhau chong dung CHONG_MEP
+  const dw=bw*CHONG_MEP/2, dh=bh*CHONG_MEP/2;
+  const tatCa=[];
+  for(let iy=0; iy<luoi; iy++) for(let ix=0; ix<luoi; ix++){
+    const x0=Math.max(0, Math.round(ix*bw-dw)),     y0=Math.max(0, Math.round(iy*bh-dh));
+    const x1=Math.min(W, Math.round((ix+1)*bw+dw)), y1=Math.min(H, Math.round((iy+1)*bh+dh));
+    const w=x1-x0, h=y1-y0;
+    if(w<8 || h<8) continue;
+    const o=document.createElement("canvas"); o.width=w; o.height=h;
+    o.getContext("2d").drawImage(canvas, x0,y0,w,h, 0,0,w,h);
+    // doi toa do box tu he cua o ve he anh nan goc
+    for(const b of await demYolo(o)) tatCa.push([b[0]+x0, b[1]+y0, b[2]+x0, b[3]+y0, b[4]]);
+    await nhuong();   // tra luong ve cho UI giua cac o, khong dong bang man hinh
+  }
+  tatCa.sort((p,q)=>q[4]-p[4]);
+  const giu=[];
+  for(const b of tatCa){ let ok=true; for(const k of giu){ if(iouBox(b,k)>IOU_TOAN_CUC){ ok=false; break; } } if(ok) giu.push(b); }
+  return giu;
+}
 // Mau nen cua anh nan: trung vi do sang toan anh, kem MAD de biet the nao la "khac nen ro".
 // Dung trung vi + MAD chu khong dung trung binh + do lech chuan: con giong chiem it dien tich
 // nhung rat sang/toi, trung binh se bi keo lech.
@@ -642,8 +672,9 @@ async function demKhay(soKhung){
     // 4. dem
     await B.batDau(3); den=4;
     const ketQua=[], truocGop=[], khungKQ=[];
+    const tModel=performance.now();
     if(session){ for(const r of nan){
-      const bx=await demYolo(r.canvas);
+      const bx=await demYoloChiaO(r.canvas);
       const gop = batGopTM() ? gopThongMinh(bx, r.canvas) : gopCum(bx, heSoGop);
       truocGop.push(bx.length); ketQua.push(gop.length);
       khungKQ.push({canvas:r.canvas, boxes:gop});   // giu canvas SACH, ve khung luc hien
@@ -655,7 +686,7 @@ async function demKhay(soKhung){
     // tren anh nao thi so hien phai la so cua anh do.
     const chon = (ketQua.length && khungKQ.find(k=>k.boxes.length===so))
               || { canvas: nan[nan.length-1].canvas, boxes: [] };
-    if(session) await B.xong(3, `${ketQua.join(", ")}`);
+    if(session) await B.xong(3, `${ketQua.join(", ")} · ${((performance.now()-tModel)/1000).toFixed(1)}s`);
     else await B.loi(3, "chưa có model");
     const cuoi=nan[nan.length-1];
     khayVua={ so, loai:loaiCon, soMa:cuoi.soMa, khung:ketQua, khungTruoc:truocGop };
@@ -767,6 +798,16 @@ function veSuaTay(){
     g.strokeRect(x1,y1,w,hh); g.setLineDash([]);
   });
   g.setTransform(1,0,0,1,0,0);
+  // Dau chim goc duoi phai: nhin anh la biet ban nao sinh ra khi doi chieu ngoai thuc dia.
+  // Ve SAU khi reset transform nen khong to nho theo muc phong to. Chi ve len canvas HIEN THI,
+  // khong dung vao suaTay.anhNan -> anh gop van la anh nan SACH nhu CLAUDE.md yeu cau.
+  g.save();
+  g.font=`${Math.max(9, Math.round(c.width/55))}px system-ui, sans-serif`;
+  g.textAlign="right"; g.textBaseline="bottom";
+  g.shadowColor="rgba(0,0,0,.35)"; g.shadowBlur=2;
+  g.fillStyle="rgba(200,208,214,.72)";
+  g.fillText(`v${PHIEN_BAN} · ${MODEL_MD} · ${LUOI*LUOI} ô`, c.width-8, c.height-6);
+  g.restore();
   const may=suaTay.soMay, chot=soChot(), d=chot-may;
   $("#so-con").textContent = chot.toLocaleString("vi");
   if(!batKiemThu()){ $("#kq-sua").textContent=""; $("#kq-doi").textContent=""; return; }
