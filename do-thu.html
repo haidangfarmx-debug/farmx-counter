@@ -12,20 +12,15 @@ html,body{height:100%;background:#000;color:#fff;overflow:hidden;
 .man{position:fixed;inset:0;background:#000;display:none}
 .man.hien{display:block}
 
-/* ---------- man ngam: giong app Camera, khong mot chu nao ---------- */
+/* ---------- man chup: khong chu, khong o nhap, khong dong trang thai ---------- */
 #video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#000}
-#vien{position:absolute;inset:0;pointer-events:none;border:0 solid transparent;
-  transition:border-color .18s linear, border-width .18s linear;z-index:2}
-#vien.do   {border-width:7px;border-color:#E53935}
-#vien.vang {border-width:7px;border-color:#F9A825}
-#vien.xanh {border-width:9px;border-color:#2FBF63}
-
 #nut-chup{position:absolute;left:50%;transform:translateX(-50%);
   bottom:calc(28px + env(safe-area-inset-bottom));
   width:74px;height:74px;border-radius:50%;background:#fff;
   border:5px solid rgba(255,255,255,.45);background-clip:padding-box;
   cursor:pointer;z-index:3;padding:0}
 #nut-chup:active{transform:translateX(-50%) scale(.93)}
+#nut-chup:disabled{opacity:.45}
 
 /* Chi hien khi camera hong — khong de man den im lang */
 #loi-cam{position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);z-index:4;
@@ -36,42 +31,25 @@ html,body{height:100%;background:#000;color:#fff;overflow:hidden;
 canvas#anh{display:block;touch-action:none}
 canvas#lup{position:absolute;display:none;width:132px;height:132px;border-radius:50%;
   border:3px solid #fff;box-shadow:0 3px 14px rgba(0,0,0,.55);pointer-events:none;z-index:5;background:#000}
-#zoomChu{position:absolute;left:12px;top:calc(12px + env(safe-area-inset-top));z-index:4;
-  background:rgba(0,0,0,.55);padding:5px 11px;border-radius:999px;font-size:13px;pointer-events:none}
 
-/* Bang duoi: gap lai de khong che anh */
-#bang{position:absolute;left:0;right:0;bottom:0;z-index:6;background:rgba(20,26,32,.94);
-  backdrop-filter:blur(8px);border-top:1px solid rgba(255,255,255,.14);
-  border-radius:16px 16px 0 0;max-height:72vh;display:flex;flex-direction:column}
-#bang-dau{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;flex:0 0 auto}
-#bang-dau .tom{flex:1;font-size:14px;color:#B9C6D0;line-height:1.35}
-#bang-dau .mui{font-size:15px;color:#8FA0AD;transition:transform .2s}
-#bang.mo #bang-dau .mui{transform:rotate(180deg)}
-#bang-than{display:none;overflow-y:auto;padding:0 14px calc(14px + env(safe-area-inset-bottom))}
-#bang.mo #bang-than{display:block}
-.nut{border:0;border-radius:11px;padding:11px 14px;font:inherit;font-size:15px;font-weight:700;color:#fff;background:#1976D2;cursor:pointer}
-.nut.phu{background:rgba(255,255,255,.13);color:#fff}
-.nut.do{background:#B3261E}
-.hang-nut{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px}
-.oco{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:14px;color:#B9C6D0;flex-wrap:wrap}
-.oco input{width:88px;padding:7px;border:1px solid rgba(255,255,255,.25);border-radius:9px;
-  font:inherit;font-size:15px;text-align:right;background:rgba(255,255,255,.08);color:#fff}
-.ds{list-style:none;margin-top:4px}
-.ds li{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;
-  background:rgba(255,255,255,.07);margin-bottom:6px;font-size:16px}
-.ds li i{width:15px;height:15px;border-radius:4px;flex:0 0 15px}
-.ds li b{margin-left:auto;font-variant-numeric:tabular-nums}
-.trong{color:#8FA0AD;font-size:14px;padding:6px 2px}
-.ghi{color:#8FA0AD;font-size:13px;line-height:1.5;margin-top:10px}
-code{background:rgba(255,255,255,.1);padding:1px 5px;border-radius:5px;font-size:12px}
+/* Dong nho: CHI hien khi duoi 6 ma, hoac khi khong nan duoc */
+#ghi{position:absolute;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));z-index:4;
+  background:rgba(150,98,20,.92);padding:8px 12px;border-radius:11px;
+  font-size:14px;line-height:1.4;text-align:center;display:none}
+#ghi.nang{background:rgba(168,32,25,.94)}
+
+.tron{position:absolute;z-index:6;width:48px;height:48px;border-radius:50%;border:0;
+  background:rgba(255,255,255,.16);color:#fff;font-size:21px;line-height:1;cursor:pointer;padding:0}
+.tron:active{background:rgba(255,255,255,.3)}
+#lai{right:14px;bottom:calc(14px + env(safe-area-inset-bottom))}
+#xoa{right:14px;bottom:calc(72px + env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
 
-<!-- ================= MAN NGAM ================= -->
-<div class="man hien" id="man-ngam">
+<!-- ================= MAN CHUP ================= -->
+<div class="man hien" id="man-chup">
   <video id="video" playsinline muted></video>
-  <div id="vien"></div>
   <button id="nut-chup" aria-label="Chụp"></button>
   <div id="loi-cam"></div>
 </div>
@@ -82,58 +60,34 @@ code{background:rgba(255,255,255,.1);padding:1px 5px;border-radius:5px;font-size
     <canvas id="anh"></canvas>
     <canvas id="lup" width="132" height="132"></canvas>
   </div>
-  <div id="zoomChu">1,0×</div>
-
-  <div id="bang">
-    <div id="bang-dau">
-      <div class="tom" id="tom">—</div>
-      <div class="mui">▲</div>
-    </div>
-    <div id="bang-than">
-      <div class="hang-nut">
-        <button class="nut phu" id="lai">Chụp lại</button>
-        <button class="nut do" id="xoa">Xoá hết</button>
-      </div>
-      <div class="oco"><span>Cạnh mã in ra:</span>
-        <input type="number" id="co-ma" value="25" min="1" max="500" step="0.5"><span>mm</span></div>
-      <div class="oco"><span>PX_DV:</span>
-        <input type="number" id="px-dv" min="0.5" max="24" step="0.25"><span id="ghi-px"></span></div>
-      <ol class="ds" id="ds"><li class="trong">Chạm 2 điểm trên ảnh để tạo một đoạn.</li></ol>
-      <p class="ghi">Chạm giữ rồi rê để ngắm — kính lúp hiện trên ngón tay, nhả ra là chốt điểm. Phóng to bằng hai ngón.</p>
-      <p class="ghi">Ảnh nắn thẳng từ khung hình gốc (không qua bản thu nhỏ 1600 px) nên nét thật. Hình học lấy nguyên <code>timMa()</code> và <code>matPhang()</code> của app.js; không tô xám ô quanh mã để còn nhìn thấy mã.</p>
-      <p class="ghi">PX_DV ở đây là của riêng trang này, chỉ đổi độ nét, không ảnh hưởng app đếm và không đổi số mm.</p>
-      <p class="ghi">Viền màu lúc ngắm: đỏ = chưa đủ 6 mã · vàng = đủ mã nhưng sai số ≥ 2 px · xanh = đạt, tự chụp sau 2 khung liên tiếp. Nút tròn bấm được bất cứ lúc nào để chụp tay, kể cả khi chưa đạt.</p>
-    </div>
-  </div>
+  <div id="ghi"></div>
+  <button class="tron" id="xoa" aria-label="Xoá các đoạn đã đo">✕</button>
+  <button class="tron" id="lai" aria-label="Chụp lại">↺</button>
 </div>
 
 <script src="lib/cv.js"></script>
 <script src="lib/aruco.js"></script>
 <script src="lib/aruco_4x4_1000.js"></script>
 <script type="module">
-import { timMa, matPhang, warp, thuNho, MA_DV, PX_DV } from "./app.js";
+import { timMa, matPhang, warp, thuNho, MA_DV } from "./app.js";
 
 const $ = s => document.querySelector(s);
 const MAU = ["#4FA3F7","#FF6B6B","#3ECFA8","#FFC857","#C08CF0","#7BD86A","#FF8FC7","#8AA0FF","#FFAE63","#5AD6E0"];
-const CANH_DICH = 2000, SO_MA_DU = 6, NGUONG_RMS = 2, KHUNG_LIEN = 2;
+const CANH_DICH = 2000;   // muc nham cho canh dai anh nan
+const CO_MA_MM  = 25;     // canh ma in ra, CO DINH, khong hoi nguoi dung
+const SO_MA_DU  = 6;
 
-let goc = null, heSoNho = 1, mp = null, nan = null;
-let pxDv = PX_DV, diem = [], doan = [];
+let goc = null, heSoNho = 1, mp = null, nan = null, pxDv = 1;
+let diem = [], doan = [];
 let zoom = { s:1, tx:0, ty:0 };
-let stream = null, dangDo = false, datLienTiep = 0, canvasDo = null, khungCuoi = null;
+let stream = null;
 
-const mmMoiPx = () => {
-  const co = parseFloat($("#co-ma").value);
-  return (co > 0 ? co : 25) / (MA_DV * pxDv);
-};
-const nghi = ms => new Promise(r => setTimeout(r, ms));
+// 1 don vi ma = CO_MA_MM/MA_DV mm, moi don vi rong pxDv px trong anh nan.
+const mmMoiPx = () => CO_MA_MM / (MA_DV * pxDv);
 const hienMan = id => document.querySelectorAll(".man").forEach(m => m.classList.toggle("hien", m.id === id));
 
-// ================= MAN NGAM =================
-$("#nut-chup").onclick = () => {
-  if(!stream) return batCam();                                       // lan dau: bat camera
-  if(khungCuoi) chot(khungCuoi.khung, khungCuoi.s, khungCuoi.mp);     // chup tay, du chua dat
-};
+// ================= MAN CHUP =================
+$("#nut-chup").onclick = () => stream ? chup() : batCam();
 
 async function batCam(){
   $("#loi-cam").style.display = "none";
@@ -143,80 +97,71 @@ async function batCam(){
       audio: false
     });
     const v = $("#video");
-    v.srcObject = stream; await v.play();
-    canvasDo = null; datLienTiep = 0; khungCuoi = null; dangDo = true;
-    vongDo();
+    v.srcObject = stream;
+    await v.play();
   }catch(e){
     stream = null;
-    $("#vien").className = "do";
     $("#loi-cam").textContent = "Không mở được camera: " + ((e && e.message) || e) + " — chạm nút tròn để thử lại.";
     $("#loi-cam").style.display = "block";
   }
 }
 
 function dungCam(){
-  dangDo = false;
   if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
 }
 
-function veVien(n, rms){
-  const v = $("#vien");
-  if(n < SO_MA_DU)                          v.className = "do";
-  else if(rms == null || rms >= NGUONG_RMS) v.className = "vang";
-  else                                      v.className = "xanh";
-}
-
-async function vongDo(){
+// Bam nut: chup khung hien tai, do ma, nan, sang THANG man ket qua.
+// KHONG chan, khong bat chup lai, du thay it ma.
+function chup(){
   const v = $("#video");
-  while(dangDo && stream){
-    if(!v.videoWidth){ await nghi(80); continue; }
-    if(!canvasDo || canvasDo.width !== v.videoWidth){
-      canvasDo = document.createElement("canvas");
-      canvasDo.width = v.videoWidth; canvasDo.height = v.videoHeight;
-    }
-    canvasDo.getContext("2d").drawImage(v, 0, 0);
+  if(!v.videoWidth) return;
+  const nut = $("#nut-chup");
+  nut.disabled = true;
 
-    let tam = null, m = null, s = 1, nhoTmp = null;
-    try{
-      ({ canvas:nhoTmp, s } = thuNho(canvasDo));
-      tam = timMa(nhoTmp);
-      if(tam && tam.size >= 3) m = matPhang(tam);
-    }catch(e){ /* khung hong thi bo qua, do khung sau */ }
-
-    const n = tam ? tam.size : 0;
-    const rms = m ? m.saiSo.rms : null;
-    veVien(n, rms);
-    khungCuoi = m ? { khung:canvasDo, s, mp:m } : null;   // de nut tron chup tay duoc
-
-    if(n >= SO_MA_DU && rms != null && rms < NGUONG_RMS){
-      if(++datLienTiep >= KHUNG_LIEN){ chot(canvasDo, s, m); return; }
-    }else datLienTiep = 0;
-
-    await nghi(60);
-  }
-}
-
-// Chot khung: giu ban SAO cua khung goc roi tat camera, sang man ket qua.
-function chot(khung, s, m){
-  dangDo = false;
-  goc = document.createElement("canvas");
-  goc.width = khung.width; goc.height = khung.height;
-  goc.getContext("2d").drawImage(khung, 0, 0);
-  heSoNho = s; mp = m;
+  const khung = document.createElement("canvas");
+  khung.width = v.videoWidth; khung.height = v.videoHeight;
+  khung.getContext("2d").drawImage(v, 0, 0);
   dungCam();
-  doan = []; diem = [];
+
+  let tam = null, m = null, s = 1;
+  try{
+    let nhoTmp;
+    ({ canvas:nhoTmp, s } = thuNho(khung));
+    tam = timMa(nhoTmp);
+    if(tam && tam.size >= 3) m = matPhang(tam);
+  }catch(e){ /* coi nhu khong do duoc */ }
+
+  goc = khung; heSoNho = s; mp = m;
+  doan = []; diem = []; nan = null;
+  const soThay = tam ? tam.size : 0;
+  hienMan("man-kq");
+  nut.disabled = false;
+
+  if(!m){
+    // Duoi 3 ma thi khong co homography — khong the nan. Van sang man ket qua va noi ro vi sao.
+    const c = $("#anh"); c.width = 1; c.height = 1; c.style.width = "0px"; c.style.height = "0px";
+    ghiChu(`Thấy ${soThay}/${SO_MA_DU} mã — cần ít nhất 3 mã mới dựng được mặt phẳng khay, chưa nắn được ảnh.`, true);
+    return;
+  }
+
   const V = mp.vung;
   pxDv = Math.max(0.5, Math.min(24, +(CANH_DICH / Math.max(V.w, V.h)).toFixed(2)));
-  $("#px-dv").value = pxDv;
-  hienMan("man-kq");
   nanLai();
+  // Du 6 ma thi khong hien gi ca; thieu ma moi bao.
+  ghiChu(mp.soMa < SO_MA_DU
+    ? `Thấy ${mp.soMa}/${SO_MA_DU} mã · sai số tái chiếu ${mp.saiSo.rms} px — vùng đo co lại, số đo giữa các lần chụp không so sánh được.`
+    : "", false);
 }
 
-$("#lai").onclick = () => {
-  $("#vien").className = "";
-  hienMan("man-ngam");
-  batCam();
-};
+function ghiChu(txt, nang){
+  const e = $("#ghi");
+  e.textContent = txt;
+  e.className = nang ? "nang" : "";
+  e.style.display = txt ? "block" : "none";
+}
+
+$("#lai").onclick = () => { ghiChu("", false); anLup(); hienMan("man-chup"); batCam(); };
+$("#xoa").onclick = () => { doan = []; diem = []; anLup(); ve(); };
 
 // ================= NAN =================
 // mp.H dua toa do anh nan -> he anh DA THU NHO. Nhan hai hang dau voi 1/s de doi sang he
@@ -230,35 +175,14 @@ function nanLai(){
   if(!goc || !mp) return;
   const V = mp.vung;
   const w = Math.round(V.w * pxDv), h = Math.round(V.h * pxDv);
-  if(!(w > 0 && h > 0) || w*h > 40e6){
-    $("#tom").textContent = `PX_DV không dùng được (ảnh nắn sẽ là ${w}×${h} px).`;
-    return;
-  }
-  $("#tom").textContent = `Đang nắn ${w}×${h} px…`;
-  setTimeout(() => {
-    const t0 = performance.now();
-    nan = warp(goc, hTheoGoc(), w, h, Math.round(V.x * pxDv), Math.round(V.y * pxDv));
-    const ms = Math.round(performance.now() - t0);
-    const c = $("#anh");
-    c.width = nan.width; c.height = nan.height;
-    zoom = { s:1, tx:0, ty:0 };
-    vuaKhung();
-    $("#ghi-px").textContent = `→ ${nan.width}×${nan.height} px`;
-    $("#tom").textContent =
-      `${mp.soMa}/6 mã · sai số ${mp.saiSo.rms} px · nguồn ${goc.width}×${goc.height} `
-      + `· nắn ${nan.width}×${nan.height} · vùng đo ${Math.round(V.w)}×${Math.round(V.h)} đv · ${ms} ms`;
-    ve(); veDs();
-  }, 30);
+  if(!(w > 0 && h > 0) || w*h > 40e6){ ghiChu(`Không nắn được (ảnh sẽ là ${w}×${h} px).`, true); return; }
+  nan = warp(goc, hTheoGoc(), w, h, Math.round(V.x * pxDv), Math.round(V.y * pxDv));
+  const c = $("#anh");
+  c.width = nan.width; c.height = nan.height;
+  zoom = { s:1, tx:0, ty:0 };
+  vuaKhung();
+  ve();
 }
-
-$("#px-dv").onchange = () => {
-  const v = parseFloat($("#px-dv").value);
-  if(!(v > 0)){ $("#px-dv").value = pxDv; return; }
-  const k = v / pxDv; pxDv = v;
-  doan = doan.map(d => ({ ...d, a:[d.a[0]*k, d.a[1]*k], b:[d.b[0]*k, d.b[1]*k] }));
-  diem = diem.map(p => [p[0]*k, p[1]*k]);
-  nanLai();
-};
 
 // Anh nan vua het man hinh, giu dung ti le.
 function vuaKhung(){
@@ -290,12 +214,12 @@ function ve(){
   g.font = `${Math.round(15/tl)}px system-ui, sans-serif`;
   g.textBaseline = "bottom";
 
-  doan.forEach((d,i) => {
+  doan.forEach(d => {
     g.strokeStyle = d.mau; g.fillStyle = d.mau;
     g.beginPath(); g.moveTo(d.a[0], d.a[1]); g.lineTo(d.b[0], d.b[1]); g.stroke();
     for(const p of [d.a, d.b]){ g.beginPath(); g.arc(p[0], p[1], r, 0, Math.PI*2); g.fill(); }
     const mx = (d.a[0]+d.b[0])/2, my = (d.a[1]+d.b[1])/2;
-    const nhan = `${i+1}: ${(Math.hypot(d.b[0]-d.a[0], d.b[1]-d.a[1]) * mmMoiPx()).toFixed(1)} mm`;
+    const nhan = `${(Math.hypot(d.b[0]-d.a[0], d.b[1]-d.a[1]) * mmMoiPx()).toFixed(1)} mm`;
     g.lineWidth = net*2.5; g.strokeStyle = "rgba(0,0,0,.65)";
     g.strokeText(nhan, mx + r, my - r);
     g.fillStyle = d.mau; g.fillText(nhan, mx + r, my - r);
@@ -307,21 +231,7 @@ function ve(){
     g.beginPath(); g.arc(diem[0][0], diem[0][1], r, 0, Math.PI*2); g.fill();
   }
   g.setTransform(1,0,0,1,0,0);
-  $("#zoomChu").textContent = zoom.s.toFixed(1).replace(".", ",") + "×";
 }
-
-function veDs(){
-  const e = $("#ds");
-  if(!doan.length){ e.innerHTML = '<li class="trong">Chạm 2 điểm trên ảnh để tạo một đoạn.</li>'; return; }
-  e.innerHTML = doan.map((d,i) => {
-    const mm = Math.hypot(d.b[0]-d.a[0], d.b[1]-d.a[1]) * mmMoiPx();
-    return `<li><i style="background:${d.mau}"></i>Đoạn ${i+1}<b>${mm.toFixed(1)} mm</b></li>`;
-  }).join("");
-}
-
-$("#co-ma").oninput = () => { ve(); veDs(); };
-$("#xoa").onclick = () => { doan = []; diem = []; anLup(); ve(); veDs(); };
-$("#bang-dau").onclick = () => $("#bang").classList.toggle("mo");
 
 // ================= KINH LUP =================
 function veLup(clientX, clientY, p){
@@ -421,7 +331,7 @@ function ketThuc(e){
     const p = toaDoAnh(e);
     if(p[0] >= 0 && p[1] >= 0 && p[0] <= nan.width && p[1] <= nan.height){
       if(diem.length === 0) diem = [p];
-      else { doan.push({ a:diem[0], b:p, mau: MAU[doan.length % MAU.length] }); diem = []; veDs(); }
+      else { doan.push({ a:diem[0], b:p, mau: MAU[doan.length % MAU.length] }); diem = []; }
     }
     ve();
   }
