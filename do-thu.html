@@ -6,27 +6,43 @@
 <title>FarmX — Đo thử hình học</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#fff;color:#1B2A38;font:17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
-header{background:#fff;color:#1976D2;padding:14px 16px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #E3F2FD}
+html,body{background:#fff;color:#1B2A38;font:17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+header{background:#fff;color:#1976D2;padding:12px 14px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #E3F2FD}
 header b{font-size:19px}header small{color:#607D8B;font-size:13px}
-main{padding:14px;max-width:760px;margin:0 auto;padding-bottom:40px}
-.nut{border:0;border-radius:12px;padding:14px 16px;font:inherit;font-size:16px;font-weight:700;color:#fff;background:#1976D2;cursor:pointer}
+main{padding:12px 14px;max-width:760px;margin:0 auto}
+.nut{border:0;border-radius:12px;padding:13px 15px;font:inherit;font-size:16px;font-weight:700;color:#fff;background:#1976D2;cursor:pointer}
 .nut.phu{background:#fff;color:#1976D2;border:2px solid #1976D2}
 .nut.do{background:#B3261E}
 .nut:disabled{background:#CBD5DD;color:#6B7A86;border-color:#CBD5DD;cursor:default}
-.hang-nut{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-input[type=file]{display:none}
-.oco{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:15px;color:#607D8B}
-.oco input{width:96px;padding:8px;border:2px solid #CBD5DD;border-radius:10px;font:inherit;text-align:right}
-.tin{background:#E3F2FD;border:1px solid #BBDEFB;border-radius:12px;padding:10px 12px;font-size:15px;margin-bottom:12px;line-height:1.5}
+.hang-nut{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.oco{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:15px;color:#607D8B;flex-wrap:wrap}
+.oco input{width:92px;padding:8px;border:2px solid #CBD5DD;border-radius:10px;font:inherit;text-align:right}
+.tin{background:#E3F2FD;border:1px solid #BBDEFB;border-radius:12px;padding:9px 11px;font-size:15px;margin-bottom:10px;line-height:1.5}
 .tin b{color:#1976D2}
-.tin.loi{background:#F9DEDC;border-color:#F2B8B5;color:#B3261E}
-.tin.loi b{color:#B3261E}
-#boc{position:relative;background:#000;border-radius:12px;overflow:hidden;display:none}
-canvas{width:100%;display:block;touch-action:none}
-video{width:100%;display:block;border-radius:12px;background:#000}
-#khungCam{display:none;margin-bottom:12px}
-.ds{margin-top:14px}
+.tin.loi{background:#F9DEDC;border-color:#F2B8B5;color:#B3261E}.tin.loi b{color:#B3261E}
+.tin.cho{background:#FBEED6;border-color:#F0DCB0;color:#8A6412}.tin.cho b{color:#8A6412}
+
+/* Anh va video chiem HET be ngang man hinh */
+.day{position:relative;background:#000;width:100vw;margin-left:calc(50% - 50vw);overflow:hidden}
+#khungCam{display:none}
+#boc{display:none;touch-action:none}
+video{width:100%;display:block}
+canvas#anh{width:100%;display:block;touch-action:none}
+canvas#lup{position:absolute;display:none;width:132px;height:132px;border-radius:50%;
+  border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.45);pointer-events:none;z-index:3;background:#000}
+#nhac-zoom{position:absolute;left:8px;bottom:8px;z-index:2;background:rgba(0,0,0,.58);color:#fff;
+  padding:6px 11px;border-radius:999px;font-size:13px;pointer-events:none}
+
+/* Lop chu de tren video */
+#do-song{position:absolute;left:8px;right:8px;top:8px;z-index:2;background:rgba(0,0,0,.62);color:#fff;
+  padding:8px 12px;border-radius:12px;font-size:15px;line-height:1.35;pointer-events:none;text-align:center}
+#do-song .so{font-size:19px;font-weight:800;letter-spacing:.2px}
+#do-song .nhac{font-size:16px;font-weight:700;margin-top:3px}
+#do-song.ok{background:rgba(21,110,63,.9)}
+#do-song.canh{background:rgba(150,98,20,.92)}
+#do-song.loi{background:rgba(168,32,25,.94)}
+
+.ds{margin-top:12px}
 .ds h2{font-size:16px;margin-bottom:8px;color:#607D8B;font-weight:700}
 .ds ol{list-style:none}
 .ds li{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;background:#F2F6F8;margin-bottom:6px;font-size:16px}
@@ -39,37 +55,46 @@ code{background:#F2F6F8;padding:1px 5px;border-radius:5px;font-size:13px}
 </head>
 <body>
 <header><b>Đo thử hình học</b><small id="pb">—</small></header>
-<main>
 
+<main>
 <div class="hang-nut">
-  <button class="nut phu" id="chon-tep">Chọn ảnh từ máy</button>
-  <input type="file" id="tep" accept="image/*">
-  <button class="nut phu" id="mo-cam">Mở camera</button>
+  <button class="nut" id="bat-cam">Bật camera</button>
+  <button class="nut phu" id="chup-lai" style="display:none">Chụp lại</button>
   <button class="nut do" id="xoa" disabled>Xoá hết</button>
 </div>
+<div class="tin" id="tin">Bấm <b>Bật camera</b>, giơ máy thẳng trên khay. Đủ 6 mã và đủ thẳng là máy tự chụp.</div>
+</main>
 
-<div class="oco">
-  <span>Cạnh mã in ra:</span><input type="number" id="co-ma" value="25" min="1" max="200" step="0.5"><span>mm</span>
-</div>
-
-<div id="khungCam">
+<div class="day" id="khungCam">
   <video id="video" playsinline muted></video>
-  <div class="hang-nut" style="margin-top:8px"><button class="nut" id="chup-cam">Chụp khung này</button></div>
+  <div id="do-song"><div class="so">—</div><div class="nhac">Đang bật camera…</div></div>
 </div>
 
-<div class="tin" id="tin">Chọn một ảnh khay có dán mã ArUco, hoặc mở camera rồi chụp.</div>
+<div class="day" id="boc">
+  <canvas id="anh"></canvas>
+  <canvas id="lup" width="132" height="132"></canvas>
+  <div id="nhac-zoom">1,0×</div>
+</div>
 
-<div id="boc"><canvas id="anh"></canvas></div>
+<main>
+<div class="oco">
+  <span>Cạnh mã in ra:</span><input type="number" id="co-ma" value="25" min="1" max="500" step="0.5"><span>mm</span>
+</div>
+<div class="oco">
+  <span>PX_DV (px mỗi đơn vị):</span><input type="number" id="px-dv" min="0.5" max="24" step="0.25" disabled><span id="ghi-px"></span>
+</div>
 
 <div class="ds">
   <h2>Các đoạn đã đo</h2>
   <ol id="ds"><li class="trong">Chưa đo đoạn nào. Chạm 2 điểm trên ảnh để tạo một đoạn.</li></ol>
 </div>
 
-<p class="phu">Trang này không dùng model AI. Nó nạp lại <code>timMa()</code>, <code>matPhang()</code>, <code>warp()</code> và <code>thuNho()</code> từ <code>app.js</code>, nên hình học ở đây luôn giống hệt app đếm. Ảnh nắn ở đây <b>không</b> tô xám ô quanh mã, để còn nhìn thấy mã mà kiểm tra nắn có đúng không.</p>
-<p class="phu">Phóng to bằng hai ngón, kéo để dịch khi đang phóng. Chạm một điểm rồi chạm điểm thứ hai là xong một đoạn.</p>
-<p class="phu">Đổi ra mm cần biết cạnh mã in ra bao nhiêu — app đếm cố tình không cần số này (mọi thứ tính theo <i>đơn vị mã</i>), nên ở đây phải nhập tay. Nhập sai thì mọi số mm sai theo cùng một tỉ lệ, còn tỉ lệ giữa các đoạn vẫn đúng.</p>
-
+<p class="phu">Chạm và <b>giữ rồi rê</b> để ngắm — kính lúp hiện ngay trên ngón tay, nhả ra là chốt điểm. Phóng to bằng hai ngón, kéo để dịch khi đang phóng.</p>
+<p class="phu">Tự chụp khi thấy đủ <b>6 mã</b> và sai số tái chiếu <b>dưới 2 px</b> trong <b>hai khung liên tiếp</b> — một khung dễ ăn may lúc ảnh nhoè.</p>
+<p class="phu">Trang này không dùng model AI. Nó nạp lại <code>timMa()</code>, <code>matPhang()</code>, <code>warp()</code>, <code>thuNho()</code> từ <code>app.js</code> nên hình học giống hệt app đếm. Ảnh nắn ở đây <b>không</b> tô xám ô quanh mã, để còn nhìn thấy mã mà kiểm tra nắn có đúng không.</p>
+<p class="phu">Khác app một điểm có lợi: app nắn từ ảnh đã thu nhỏ về 1600 px, còn trang này nắn thẳng từ <b>khung hình gốc</b> (nhân hai hàng đầu của H với 1/s) nên ảnh nắn nét thật chứ không phải phóng to nội suy. Toạ độ và số mm không đổi.</p>
+<p class="phu"><b>PX_DV</b> ở đây là của riêng trang này, chỉ đổi độ nét ảnh nắn, <b>không</b> ảnh hưởng app đếm. Mặc định tự chọn sao cho cạnh dài ảnh nắn khoảng 2000 px. Số mm <b>không</b> đổi khi chỉnh PX_DV.</p>
+<p class="phu">Đổi ra mm cần biết cạnh mã in ra bao nhiêu — app đếm cố tình không cần số này, nên ở đây phải nhập tay. Nhập sai thì mọi số mm sai theo cùng một tỉ lệ, còn tỉ lệ giữa các đoạn vẫn đúng.</p>
 </main>
 
 <script src="lib/cv.js"></script>
@@ -80,113 +105,172 @@ import { timMa, matPhang, warp, thuNho, MA_DV, PX_DV } from "./app.js";
 
 const $ = s => document.querySelector(s);
 const MAU = ["#1976D2","#E53935","#00897B","#F9A825","#8E24AA","#43A047","#D81B60","#3949AB","#EF6C00","#00ACC1"];
+const CANH_DICH  = 2000;   // muc nham cho canh dai anh nan
+const SO_MA_DU   = 6;      // du 6 ma moi tu chup
+const NGUONG_RMS = 2;      // sai so tai chieu phai duoi 2 px
+const KHUNG_LIEN = 2;      // phai dat trong 2 khung lien tiep
 
-let nan = null;                       // canvas anh nan
-let diem = [];                        // diem dang cho ghep cap (0 hoac 1 diem)
-let doan = [];                        // [{a:[x,y], b:[x,y], mau}]
+let goc = null;            // canvas khung hinh GOC (do phan giai day du)
+let heSoNho = 1;           // s cua thuNho: nho = goc * s
+let mp = null;             // ket qua matPhang() (toa do theo he anh da thu nho)
+let nan = null;            // canvas anh nan
+let pxDv = PX_DV;
+let diem = [], doan = [];
 let zoom = { s:1, tx:0, ty:0 };
-let stream = null;
+let stream = null, dangDo = false, datLienTiep = 0;
+let canvasDo = null;       // canvas dung lai cho vong do, tranh cap phat lai moi khung
 
-$("#pb").textContent = `MA_DV ${MA_DV} · PX_DV ${PX_DV}`;
+$("#pb").textContent = `MA_DV ${MA_DV} · app dùng PX_DV ${PX_DV}`;
 
-// Bao nhieu mm cho mot pixel cua anh nan.
-// 1 don vi ma = (canh ma in ra) / MA_DV mm, va moi don vi rong PX_DV px trong anh nan.
 const mmMoiPx = () => {
   const co = parseFloat($("#co-ma").value);
-  return (co > 0 ? co : 25) / (MA_DV * PX_DV);
+  return (co > 0 ? co : 25) / (MA_DV * pxDv);
 };
-
-function bao(html, loi){
-  const e = $("#tin");
-  e.innerHTML = html;
-  e.className = "tin" + (loi ? " loi" : "");
+function bao(html, kieu){
+  const e = $("#tin"); e.innerHTML = html; e.className = "tin" + (kieu ? " " + kieu : "");
 }
 
-// ---------- anh vao -> tim ma -> nan ----------
-function xuLy(src){
-  let nho, tam, mp;
-  try{
-    ({ canvas:nho } = thuNho(src));
-    tam = timMa(nho);
-    mp  = matPhang(tam);
-  }catch(e){
-    return bao("Lỗi khi dò mã: " + ((e && e.message) || e), true);
-  }
-  const soThay = tam ? tam.size : 0;
-  if(!mp){
-    nan = null;
-    $("#boc").style.display = "none";
-    $("#xoa").disabled = true;
-    return bao(`Chỉ thấy <b>${soThay}</b> mã — cần ít nhất <b>3</b> mã mới dựng được mặt phẳng khay.`, true);
-  }
-  const V = mp.vung;
-  nan = warp(nho, mp.H,
-             Math.round(V.w * PX_DV), Math.round(V.h * PX_DV),
-             Math.round(V.x * PX_DV), Math.round(V.y * PX_DV));
-  doan = []; diem = []; zoom = { s:1, tx:0, ty:0 };
-  const c = $("#anh");
-  c.width = nan.width; c.height = nan.height;
-  $("#boc").style.display = "block";
-  $("#xoa").disabled = false;
-  bao(`Thấy <b>${mp.soMa}</b> mã · ảnh nắn <b>${nan.width}×${nan.height}</b> px `
-    + `· vùng đo <b>${Math.round(V.w)}×${Math.round(V.h)}</b> đơn vị `
-    + `· sai số tái chiếu <b>${mp.saiSo.rms}</b> px (lớn nhất ${mp.saiSo.max})`);
-  ve(); veDs();
-}
-
-function tuTep(tep){
-  const img = new Image();
-  const url = URL.createObjectURL(tep);
-  img.onload = () => {
-    const c = document.createElement("canvas");
-    c.width = img.naturalWidth; c.height = img.naturalHeight;
-    c.getContext("2d").drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
-    xuLy(c);
-  };
-  img.onerror = () => { URL.revokeObjectURL(url); bao("Không đọc được ảnh này.", true); };
-  img.src = url;
-}
-
-$("#chon-tep").onclick = () => $("#tep").click();
-$("#tep").onchange = e => { const f = e.target.files[0]; if(f) tuTep(f); e.target.value = ""; };
-
-// ---------- camera ----------
-$("#mo-cam").onclick = async () => {
-  if(stream) return dongCam();
+// ---------- camera + vong do lien tuc ----------
+$("#bat-cam").onclick = async () => {
+  if(stream) return dungCam();
   try{
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode:{ ideal:"environment" }, width:{ ideal:3024 }, height:{ ideal:4032 } },
       audio: false
     });
-    $("#video").srcObject = stream;
-    await $("#video").play();
+    const v = $("#video");
+    v.srcObject = stream; await v.play();
     $("#khungCam").style.display = "block";
-    $("#mo-cam").textContent = "Tắt camera";
+    $("#boc").style.display = "none";
+    $("#chup-lai").style.display = "none";
+    $("#bat-cam").textContent = "Tắt camera";
+    bao("Giơ máy thẳng trên khay. Đủ 6 mã và sai số dưới 2 px là tự chụp.");
+    canvasDo = null; datLienTiep = 0; dangDo = true;
+    vongDo();
   }catch(e){
     stream = null;
-    bao("Không mở được camera: " + ((e && e.message) || e), true);
+    bao("Không mở được camera: " + ((e && e.message) || e), "loi");
   }
 };
 
-function dongCam(){
+function dungCam(){
+  dangDo = false;
   if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
   $("#khungCam").style.display = "none";
-  $("#mo-cam").textContent = "Mở camera";
+  $("#bat-cam").textContent = "Bật camera";
 }
 
-$("#chup-cam").onclick = () => {
+function veDoSong(n, rms){
+  const e = $("#do-song");
+  const soTxt = `${n}/${SO_MA_DU} mã · sai số ${rms == null ? "—" : rms.toFixed(2) + " px"}`;
+  let nhac, cls;
+  if(n === 0)            { nhac = "Chưa thấy mã nào — đưa khay vào khung"; cls = "loi"; }
+  else if(n < 3)         { nhac = `Thấy ${n}/6 mã — đưa cả khay vào khung`; cls = "loi"; }
+  else if(n < SO_MA_DU)  { nhac = `Thấy ${n}/6 mã — lùi ra`;                cls = "canh"; }
+  else if(rms == null)   { nhac = "Không dựng được mặt phẳng — chỉnh lại góc"; cls = "canh"; }
+  else if(rms >= NGUONG_RMS){ nhac = "Nghiêng quá — giơ thẳng máy";         cls = "canh"; }
+  else                   { nhac = "Đạt — đang chụp…";                       cls = "ok"; }
+  e.className = cls;
+  e.querySelector(".so").textContent = soTxt;
+  e.querySelector(".nhac").textContent = nhac;
+}
+
+async function vongDo(){
   const v = $("#video");
-  if(!v.videoWidth) return bao("Camera chưa sẵn sàng, đợi một giây rồi chụp lại.", true);
-  const c = document.createElement("canvas");
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext("2d").drawImage(v, 0, 0);
-  dongCam();
-  xuLy(c);
+  while(dangDo && stream){
+    if(!v.videoWidth){ await nghi(80); continue; }
+    if(!canvasDo || canvasDo.width !== v.videoWidth){
+      canvasDo = document.createElement("canvas");
+      canvasDo.width = v.videoWidth; canvasDo.height = v.videoHeight;
+    }
+    canvasDo.getContext("2d").drawImage(v, 0, 0);
+
+    let tam = null, m = null, s = 1, nhoTmp = null;
+    try{
+      ({ canvas:nhoTmp, s } = thuNho(canvasDo));
+      tam = timMa(nhoTmp);
+      if(tam && tam.size >= 3) m = matPhang(tam);
+    }catch(e){ /* khung hong thi bo qua, do khung sau */ }
+
+    const n = tam ? tam.size : 0;
+    const rms = m ? m.saiSo.rms : null;
+    veDoSong(n, rms);
+
+    if(n >= SO_MA_DU && rms != null && rms < NGUONG_RMS){
+      datLienTiep++;
+      if(datLienTiep >= KHUNG_LIEN){ chot(canvasDo, s, m); return; }
+    }else{
+      datLienTiep = 0;
+    }
+    await nghi(60);
+  }
+}
+const nghi = ms => new Promise(r => setTimeout(r, ms));
+
+// Chot khung dat yeu cau: giu lai ban SAO cua khung goc roi tat camera.
+function chot(khung, s, m){
+  dangDo = false;
+  goc = document.createElement("canvas");
+  goc.width = khung.width; goc.height = khung.height;
+  goc.getContext("2d").drawImage(khung, 0, 0);
+  heSoNho = s; mp = m;
+  dungCam();
+  $("#chup-lai").style.display = "";
+  doan = []; diem = [];
+
+  const V = mp.vung;
+  pxDv = Math.max(0.5, Math.min(24, +(CANH_DICH / Math.max(V.w, V.h)).toFixed(2)));
+  $("#px-dv").value = pxDv; $("#px-dv").disabled = false;
+  nanLai();
+}
+
+$("#chup-lai").onclick = () => $("#bat-cam").onclick();
+
+// ---------- nan ----------
+// mp.H dua toa do anh nan -> he anh DA THU NHO. Nhan hai hang dau voi 1/s de doi sang
+// he anh GOC, roi lay mau thang tu khung goc -> net that, khong phai phong to noi suy.
+function hTheoGoc(){
+  const k = 1 / (heSoNho || 1), H = mp.H;
+  return [ H[0]*k, H[1]*k, H[2]*k, H[3]*k, H[4]*k, H[5]*k, H[6], H[7], H[8] ];
+}
+
+function nanLai(){
+  if(!goc || !mp) return;
+  const V = mp.vung;
+  const w = Math.round(V.w * pxDv), h = Math.round(V.h * pxDv);
+  if(!(w > 0 && h > 0)) return bao("PX_DV không hợp lệ.", "loi");
+  if(w * h > 40e6) return bao(`PX_DV quá lớn: ảnh nắn sẽ là ${w}×${h} px. Hạ xuống.`, "loi");
+
+  bao(`Đang nắn ảnh ${w}×${h} px…`, "cho");
+  setTimeout(() => {
+    const t0 = performance.now();
+    nan = warp(goc, hTheoGoc(), w, h, Math.round(V.x * pxDv), Math.round(V.y * pxDv));
+    const ms = Math.round(performance.now() - t0);
+    const c = $("#anh");
+    c.width = nan.width; c.height = nan.height;
+    zoom = { s:1, tx:0, ty:0 };
+    $("#boc").style.display = "block";
+    $("#xoa").disabled = false;
+    $("#ghi-px").textContent = `→ ${nan.width}×${nan.height} px`;
+    bao(`Đã chụp: <b>${mp.soMa}</b> mã · sai số tái chiếu <b>${mp.saiSo.rms}</b> px (lớn nhất ${mp.saiSo.max}) `
+      + `· nguồn <b>${goc.width}×${goc.height}</b> · ảnh nắn <b>${nan.width}×${nan.height}</b> px `
+      + `· vùng đo <b>${Math.round(V.w)}×${Math.round(V.h)}</b> đơn vị · nắn ${ms} ms`);
+    ve(); veDs();
+  }, 30);
+}
+
+$("#px-dv").onchange = () => {
+  const v = parseFloat($("#px-dv").value);
+  if(!(v > 0)){ $("#px-dv").value = pxDv; return; }
+  const cu = pxDv; pxDv = v;
+  // giu cac doan da do: toa do px ti le thuan voi pxDv
+  const k = pxDv / cu;
+  doan = doan.map(d => ({ ...d, a:[d.a[0]*k, d.a[1]*k], b:[d.b[0]*k, d.b[1]*k] }));
+  diem = diem.map(p => [p[0]*k, p[1]*k]);
+  nanLai();
 };
 
 // ---------- ve ----------
-// Ty le tu don vi anh -> px man hinh, de net ve va chu giu nguyen co du phong to bao nhieu.
 function tyLeManHinh(){
   const c = $("#anh"), r = c.getBoundingClientRect();
   return (r.width ? r.width / c.width : 1) * zoom.s;
@@ -222,6 +306,7 @@ function ve(){
     g.beginPath(); g.arc(diem[0][0], diem[0][1], r, 0, Math.PI*2); g.fill();
   }
   g.setTransform(1,0,0,1,0,0);
+  $("#nhac-zoom").textContent = zoom.s.toFixed(1).replace(".", ",") + "×";
 }
 
 function veDs(){
@@ -237,17 +322,42 @@ function veDs(){
 }
 
 $("#co-ma").oninput = () => { ve(); veDs(); };
-$("#xoa").onclick = () => { doan = []; diem = []; ve(); veDs(); };
+$("#xoa").onclick = () => { doan = []; diem = []; anLup(); ve(); veDs(); };
+
+// ---------- kinh lup ----------
+function veLup(clientX, clientY, p){
+  if(!nan) return;
+  const lp = $("#lup"), g = lp.getContext("2d"), R = lp.width;
+  const oAnh = 46;                       // so px anh nan lot vao kinh lup
+  g.setTransform(1,0,0,1,0,0);
+  g.fillStyle = "#111"; g.fillRect(0,0,R,R);
+  g.imageSmoothingEnabled = false;       // nhin ro tung diem anh
+  g.drawImage(nan, p[0]-oAnh/2, p[1]-oAnh/2, oAnh, oAnh, 0, 0, R, R);
+  g.strokeStyle = "rgba(255,45,45,.95)"; g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(R/2, R/2-15); g.lineTo(R/2, R/2-4);
+  g.moveTo(R/2, R/2+4);  g.lineTo(R/2, R/2+15);
+  g.moveTo(R/2-15, R/2); g.lineTo(R/2-4, R/2);
+  g.moveTo(R/2+4,  R/2); g.lineTo(R/2+15, R/2);
+  g.stroke();
+
+  const r = $("#boc").getBoundingClientRect();
+  let x = clientX - r.left - R/2;
+  let y = clientY - r.top - R - 26;            // dat PHIA TREN ngon tay
+  if(y < 4) y = clientY - r.top + 26;
+  x = Math.max(4, Math.min(Math.max(4, r.width  - R - 4), x));
+  y = Math.max(4, Math.min(Math.max(4, r.height - R - 4), y));
+  lp.style.left = x + "px"; lp.style.top = y + "px"; lp.style.display = "block";
+}
+const anLup = () => { $("#lup").style.display = "none"; };
 
 // ---------- cham + phong to hai ngon ----------
 const c = $("#anh");
 const ngon = new Map();
-let truoc = null, diChuyen = 0, tBatDau = 0, khoangCu = 0;
+let truoc = null, diChuyen = 0, khoangCu = 0;
 
 function toaDoAnh(ev){
   const r = c.getBoundingClientRect();
-  // r.width = 0 khi trang chua co bo cuc (tab an, cua so 0 px) -> chia cho 0 ra NaN.
-  // Giu cung nep voi tyLeManHinh() trong app.js: khong co be rong thi coi nhu 1:1.
   const kx = r.width  ? c.width  / r.width  : 1;
   const ky = r.height ? c.height / r.height : 1;
   const x = (ev.clientX - r.left) * kx;
@@ -264,9 +374,14 @@ function ganBien(){
 c.addEventListener("pointerdown", e => {
   if(!nan) return;
   ngon.set(e.pointerId, [e.clientX, e.clientY]);
-  try{ c.setPointerCapture(e.pointerId); }catch(err){}   // bat duoc thi tot, khong thi van do duoc
-  if(ngon.size === 1){ truoc = [e.clientX, e.clientY]; diChuyen = 0; tBatDau = Date.now(); }
-  else { truoc = null; diChuyen = 999; }   // hai ngon thi khong tinh la cham nua
+  try{ c.setPointerCapture(e.pointerId); }catch(err){}
+  if(ngon.size === 1){
+    truoc = [e.clientX, e.clientY]; diChuyen = 0;
+    veLup(e.clientX, e.clientY, toaDoAnh(e));
+  }else{
+    truoc = null; diChuyen = 999;   // hai ngon = phong to, khong phai cham
+    anLup();
+  }
 });
 
 c.addEventListener("pointermove", e => {
@@ -277,7 +392,7 @@ c.addEventListener("pointermove", e => {
   if(ds.length >= 2){
     const kc = Math.hypot(ds[0][0]-ds[1][0], ds[0][1]-ds[1][1]);
     if(khoangCu){
-      const r = c.getBoundingClientRect(), k = c.width / r.width;
+      const r = c.getBoundingClientRect(), k = r.width ? c.width / r.width : 1;
       const gx = ((ds[0][0]+ds[1][0])/2 - r.left) * k;
       const gy = ((ds[0][1]+ds[1][1])/2 - r.top)  * k;
       const cu = zoom.s;
@@ -290,10 +405,12 @@ c.addEventListener("pointermove", e => {
   } else if(truoc){
     const dx = e.clientX - truoc[0], dy = e.clientY - truoc[1];
     diChuyen += Math.hypot(dx, dy);
-    if(zoom.s > 1){
-      const r = c.getBoundingClientRect(), k = c.width / r.width;
+    if(zoom.s > 1 && diChuyen > 10){
+      const r = c.getBoundingClientRect(), k = r.width ? c.width / r.width : 1;
       zoom.tx += dx*k; zoom.ty += dy*k;
-      ganBien(); ve();
+      ganBien(); ve(); anLup();
+    }else{
+      veLup(e.clientX, e.clientY, toaDoAnh(e));   // ngam: re ngon de chinh diem
     }
     truoc = [e.clientX, e.clientY];
   }
@@ -304,12 +421,16 @@ function ketThuc(e){
   ngon.delete(e.pointerId);
   if(ngon.size < 2) khoangCu = 0;
   if(ngon.size > 0) return;
+  anLup();
 
-  // Cham that su: di chuyen < 8 px va nhanh hon 600 ms — giong quy uoc trong app.js.
-  if(nan && diChuyen < 8 && Date.now() - tBatDau < 600){
+  // Nha ngon: chot diem, tru khi dang KEO anh luc phong to.
+  const dangKeo = zoom.s > 1 && diChuyen > 10;
+  if(nan && !dangKeo){
     const p = toaDoAnh(e);
-    if(diem.length === 0){ diem = [p]; }
-    else { doan.push({ a:diem[0], b:p, mau: MAU[doan.length % MAU.length] }); diem = []; veDs(); }
+    if(p[0] >= 0 && p[1] >= 0 && p[0] <= nan.width && p[1] <= nan.height){
+      if(diem.length === 0){ diem = [p]; }
+      else { doan.push({ a:diem[0], b:p, mau: MAU[doan.length % MAU.length] }); diem = []; veDs(); }
+    }
     ve();
   }
   truoc = null; diChuyen = 0;
