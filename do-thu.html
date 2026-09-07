@@ -13,7 +13,10 @@ html,body{height:100%;background:#000;color:#fff;overflow:hidden;
 .man.hien{display:block}
 
 /* ---------- man chup: khong chu, khong o nhap, khong dong trang thai ---------- */
-#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#000}
+/* contain chu KHONG cover: chup() lay tron khung videoWidth x videoHeight, neu de cover
+   thi phan nhin thay bi cat bot so voi phan thuc su chup ra -> ngam mot dang, chup mot neo.
+   Voi contain, cai nhin thay dung bang cai chup ra, phan thua la nen den. */
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#000}
 #nut-chup{position:absolute;left:50%;transform:translateX(-50%);
   bottom:calc(28px + env(safe-area-inset-bottom));
   width:74px;height:74px;border-radius:50%;background:#fff;
