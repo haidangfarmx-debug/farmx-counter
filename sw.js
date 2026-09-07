@@ -1,4 +1,4 @@
-const CACHE='farmx-counter-v41';
+const CACHE='farmx-counter-v42';
 const APP=['./','./index.html','./app.js','./manifest.json','./icon.svg','./lib/cv.js','./lib/aruco.js','./lib/aruco_4x4_1000.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(APP)));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});

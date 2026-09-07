@@ -74,7 +74,7 @@ let loaiCon = localStorage.loaiCon || null, stream = null, ort = null, session =
 let loHienTai = null, khayVua = null, dangChup = false, soMaCuoi = 0, daNhacLo = false;
 let luuVua = null;   // { moiTao } — lan tu luu gan nhat, de con bo lai duoc
 let suaTay = null;   // { anhNan, hop:[{b,xoa,them}], lichSu, soMay } — sua tay o man ket qua
-const PHIEN_BAN = "2.7";
+const PHIEN_BAN = "2.8";
 const thietBiId = localStorage.thietBiId || (localStorage.thietBiId = "tb_" + Math.random().toString(36).slice(2,10));
 
 // ---- dieu huong ----
@@ -488,7 +488,7 @@ async function taiModel(){
 // Cham vao o Model de tai lai khi hong.
 $("#o-model").onclick = () => { if(!session && !dangTaiModel) taiModel(); };
 
-async function demYolo(canvas, imgsz=1280, conf=0.15, iou=0.5){
+async function demYolo(canvas, imgsz=1280, conf=0.20, iou=0.25){
   // letterbox
   const s=Math.min(imgsz/canvas.width, imgsz/canvas.height), nw=Math.round(canvas.width*s), nh=Math.round(canvas.height*s);
   const c=document.createElement("canvas"); c.width=imgsz; c.height=imgsz; const g=c.getContext("2d"); g.fillStyle="#727272"; g.fillRect(0,0,imgsz,imgsz);
